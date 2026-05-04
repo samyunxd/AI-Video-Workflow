@@ -1,7 +1,5 @@
 import { GoogleGenAI, Type } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-
 export interface ScenePrompt {
   id: number;
   scriptSegment: string;
@@ -19,9 +17,13 @@ export async function generateBulkPrompts(
   customApiKey?: string,
   wordsPerSecond: number = 2
 ): Promise<ScenePrompt[]> {
-  const apiKey = customApiKey || process.env.GEMINI_API_KEY;
+  // Use custom key if provided, otherwise fallback to env
+  // Access process.env safely to avoid ReferenceError in Vite production
+  const envKey = typeof process !== 'undefined' ? process.env.GEMINI_API_KEY : undefined;
+  const apiKey = customApiKey || envKey;
+
   if (!apiKey) {
-    throw new Error("API Key is missing. Please provide a Gemini API Key.");
+    throw new Error("API Key is missing. Please provide a Gemini API Key in the settings.");
   }
   
   const ai = new GoogleGenAI({ apiKey });
