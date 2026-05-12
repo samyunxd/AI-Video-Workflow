@@ -17,7 +17,8 @@ import {
   Image as ImageIcon,
   Type,
   LayoutGrid,
-  Square
+  Square,
+  Zap
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { generateBulkPrompts, ScenePrompt } from './services/gemini';
@@ -30,6 +31,15 @@ export default function App() {
   const [secondsPerScene, setSecondsPerScene] = useState(() => Number(localStorage.getItem('cb_sec')) || 5);
   const [wordsPerSecond, setWordsPerSecond] = useState(() => Number(localStorage.getItem('cb_wps')) || 2);
   const [multiview, setMultiview] = useState(() => localStorage.getItem('cb_mv') === 'true');
+  const [strictImage, setStrictImage] = useState(() => localStorage.getItem('cb_strict') === 'true');
+  const [selectedMotions, setSelectedMotions] = useState<string[]>(() => {
+    const saved = localStorage.getItem('cb_motions');
+    return saved ? JSON.parse(saved) : ['Static Camera', 'Pan Right', 'Tilt Down', 'Zoom In', 'Tracking Shot'];
+  });
+  const [selectedShotTypes, setSelectedShotTypes] = useState<string[]>(() => {
+    const saved = localStorage.getItem('cb_shots');
+    return saved ? JSON.parse(saved) : ['Wide Shot', 'Medium Shot', 'Close-up', 'Extreme Close-up', 'Low Angle', 'High Angle'];
+  });
   const [isGenerating, setIsGenerating] = useState(false);
   const [scenes, setScenes] = useState<ScenePrompt[]>(() => {
     const saved = localStorage.getItem('cb_scenes');
@@ -45,6 +55,9 @@ export default function App() {
   useEffect(() => localStorage.setItem('cb_sec', secondsPerScene.toString()), [secondsPerScene]);
   useEffect(() => localStorage.setItem('cb_wps', wordsPerSecond.toString()), [wordsPerSecond]);
   useEffect(() => localStorage.setItem('cb_mv', multiview.toString()), [multiview]);
+  useEffect(() => localStorage.setItem('cb_strict', strictImage.toString()), [strictImage]);
+  useEffect(() => localStorage.setItem('cb_motions', JSON.stringify(selectedMotions)), [selectedMotions]);
+  useEffect(() => localStorage.setItem('cb_shots', JSON.stringify(selectedShotTypes)), [selectedShotTypes]);
   useEffect(() => localStorage.setItem('cb_scenes', JSON.stringify(scenes)), [scenes]);
 
   const handleGenerate = async () => {
@@ -55,7 +68,18 @@ export default function App() {
     setError(null);
     setIsGenerating(true);
     try {
-      const results = await generateBulkPrompts(script, style, secondsPerScene, multiview, negativePrompt, customApiKey, wordsPerSecond);
+      const results = await generateBulkPrompts(
+        script, 
+        style, 
+        secondsPerScene, 
+        multiview, 
+        negativePrompt, 
+        customApiKey, 
+        wordsPerSecond,
+        selectedMotions,
+        strictImage,
+        selectedShotTypes
+      );
       setScenes(results);
     } catch (err: any) {
       setError(err.message || "Failed to generate prompts. Please try again.");
@@ -74,13 +98,56 @@ export default function App() {
     const rows = scenes.map(s => [s.id, s.scriptSegment, s.imagePrompt, s.negativePrompt, s.videoPrompt]);
     const csvContent = [headers, ...rows]
       .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
-      .join('\n');
+      .join('\n\n');
     
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
     link.setAttribute('download', 'video_prompts.csv');
     link.click();
+  };
+
+  const motionOptions = [
+    'Static Camera',
+    'Pan Left',
+    'Pan Right',
+    'Tilt Up',
+    'Tilt Down',
+    'Zoom In',
+    'Zoom Out',
+    'Tracking Shot',
+    'Crane Shot',
+    'Handheld Shake'
+  ];
+
+  const toggleMotion = (motion: string) => {
+    setSelectedMotions(prev => 
+      prev.includes(motion) 
+        ? prev.filter(m => m !== motion) 
+        : [...prev, motion]
+    );
+  };
+
+  const shotTypeOptions = [
+    'Extreme Wide Shot',
+    'Wide Shot',
+    'Medium Shot',
+    'Close-up',
+    'Extreme Close-up',
+    'Low Angle',
+    'High Angle',
+    'Bird\'s Eye View',
+    'Worm\'s Eye View',
+    'Over-the-Shoulder',
+    'Point of View (POV)'
+  ];
+
+  const toggleShotType = (shot: string) => {
+    setSelectedShotTypes(prev => 
+      prev.includes(shot) 
+        ? prev.filter(s => s !== shot) 
+        : [...prev, shot]
+    );
   };
 
   return (
@@ -198,6 +265,18 @@ export default function App() {
               {error && <span className="text-[10px] text-red-400 italic">! {error}</span>}
             </div>
             <button 
+              onClick={() => setStrictImage(!strictImage)}
+              className={`flex items-center gap-1.5 px-2 py-0.5 rounded border transition-all ${
+                strictImage 
+                  ? 'bg-yellow-500/20 border-yellow-500 text-yellow-400 shadow-[0_0_10px_rgba(234,179,8,0.2)]' 
+                  : 'bg-slate-800 border-slate-700 text-slate-500'
+              }`}
+              id="strict-toggle"
+            >
+              <Zap className={`w-3 h-3 ${strictImage ? 'fill-current' : ''}`} />
+              <span className="text-[10px] font-bold tracking-tight uppercase">Strict Mode</span>
+            </button>
+            <button 
               onClick={() => setMultiview(!multiview)}
               className={`flex items-center gap-1.5 px-2 py-0.5 rounded border transition-all ${
                 multiview 
@@ -209,6 +288,48 @@ export default function App() {
               {multiview ? <LayoutGrid className="w-3 h-3" /> : <Square className="w-3 h-3" />}
               <span className="text-[10px] font-bold tracking-tight uppercase">{multiview ? 'Multiview On' : 'Multiview Off'}</span>
             </button>
+          </div>
+        </div>
+        <div className="col-span-1">
+          <label className="block text-[10px] uppercase font-bold text-slate-500 mb-2 tracking-wider translate-y-[-2px]">05. Camera Angles</label>
+          <div className="bg-[#0F172A] border border-slate-700 rounded-lg p-2 h-24 overflow-y-auto custom-scrollbar">
+            <div className="grid grid-cols-1 gap-1">
+              {shotTypeOptions.map((opt) => (
+                <label key={opt} className="flex items-center gap-2 px-2 py-1 hover:bg-slate-800 rounded cursor-pointer transition-colors group">
+                  <input 
+                    type="checkbox" 
+                    className="accent-indigo-500 w-3 h-3 rounded border-slate-600 bg-slate-900"
+                    checked={selectedShotTypes.includes(opt)}
+                    onChange={() => toggleShotType(opt)}
+                  />
+                  <span className={`text-[10px] ${selectedShotTypes.includes(opt) ? 'text-indigo-400' : 'text-slate-500'} group-hover:text-slate-300 transition-colors`}>{opt}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+          <div className="mt-2 text-[8px] text-slate-600 font-mono uppercase text-right">
+            {selectedShotTypes.length} Shot Types Active
+          </div>
+        </div>
+        <div className="col-span-1">
+          <label className="block text-[10px] uppercase font-bold text-slate-500 mb-2 tracking-wider translate-y-[-2px]">06. Motion Profiles</label>
+          <div className="bg-[#0F172A] border border-slate-700 rounded-lg p-2 h-24 overflow-y-auto custom-scrollbar">
+            <div className="grid grid-cols-1 gap-1">
+              {motionOptions.map((opt) => (
+                <label key={opt} className="flex items-center gap-2 px-2 py-1 hover:bg-slate-800 rounded cursor-pointer transition-colors group">
+                  <input 
+                    type="checkbox" 
+                    className="accent-indigo-500 w-3 h-3 rounded border-slate-600 bg-slate-900"
+                    checked={selectedMotions.includes(opt)}
+                    onChange={() => toggleMotion(opt)}
+                  />
+                  <span className={`text-[10px] ${selectedMotions.includes(opt) ? 'text-indigo-400' : 'text-slate-500'} group-hover:text-slate-300 transition-colors`}>{opt}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+          <div className="mt-2 text-[8px] text-slate-600 font-mono uppercase text-right">
+            {selectedMotions.length} Motion Profiles Active
           </div>
         </div>
         <div className="flex flex-col justify-between h-full py-1">
