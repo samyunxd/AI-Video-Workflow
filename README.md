@@ -3,6 +3,10 @@
 A professional batch processing tool designed for cinematic prompt engineering. This application transforms long-form scripts into a precise, time-coded sequence of image and motion prompts optimized for AI video generation.
 
 ---
+## Website: https://ai-video-workflows.vercel.app/
+
+---
+
 
 ## 🌟 What's New (v2.0 Release)
 
@@ -15,7 +19,7 @@ A professional batch processing tool designed for cinematic prompt engineering. 
 
 ---
 
-## Website: https://ai-video-workflows.vercel.app/
+
 
 
 
