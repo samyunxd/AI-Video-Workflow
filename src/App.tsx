@@ -482,7 +482,7 @@ export default function App() {
                     <p className="text-[12px] text-slate-400 leading-relaxed font-sans">
                       {scene.imagePrompt}
                       {scene.negativePrompt && (
-                        <span className="text-red-300 ml-2 italic text-[11px]">
+                        <span className="text-red-400/80 ml-2 italic text-[11px]">
                           [NEG: {scene.negativePrompt}]
                         </span>
                       )}

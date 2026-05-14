@@ -33,16 +33,26 @@ A professional batch processing tool designed for cinematic prompt engineering. 
 *   **Instructions**: Custom rules for the AI (e.g., "Ensure all characters wear blue", "Focus on close-ups for emotional moments").
 
 ### 05-06: Engine & Mode Tuning
-*   **Prompt Mode**:
-    *   `Structured Prompt`: Clean, comma-separated lists (Best for most engines).
-    *   `General Image Prompt`: Descriptive, narrative paragraphs.
-    *   `Graphic Design`: Optimized for vectors, flat art, and clean layouts.
-    *   `JSON`: Technical format for developers or specific pipelines.
-*   **Engine Optimization**:
-    *   `Flux`: Focused on complex natural language and photorealism.
-    *   `Midjourney`: Appends aesthetic keywords and focuses on mood.
-    *   `Stable Diffusion`: Uses prioritized tags often found in SD models.
-    *   `Gemini`: Detailed, conversational descriptions.
+
+#### 🎨 Prompt Modes
+The Prompt Mode determines the linguistic structure of the generated description. Choosing the right mode depends on which AI model you are using for image generation.
+
+*   **`Structured Prompt` (Default)**: Uses a clean, comma-separated list of visual elements. Perfect for models that respond well to "tag-based" prompting.
+    *   *Example*: `Medium Shot, Astronaut on Mars, red dust swirling, sharp focus, cinematic lighting, 8k.`
+*   **`General Image Prompt`**: Generates a flowing, descriptive narrative paragraph. Best for models that understand complex natural language.
+    *   *Example*: `A medium shot depicts a lone astronaut standing on the surface of Mars. Fine red dust swirls around their boots as the harsh, direct sunlight creates long shadows across the cratered landscape.`
+*   **`Graphic Design`**: Optimized for vector art, flat design, and clean layouts. Focuses on shapes, colors, and balance.
+    *   *Example*: `Minimalist vector illustration of an astronaut on Mars, flat orange and black palette, clean geometric lines, high-contrast silhouette against a red sky.`
+*   **`JSON`**: Wraps visual descriptions in a technical, data-like format for developers or custom automation pipelines.
+    *   *Example*: `{"shot": "medium", "subject": "astronaut", "environment": "Mars surface", "atmosphere": "dusty"}`
+
+#### ⚙️ Engine Optimization
+Beyond structure, the engine tunes the *content* of the prompt to match the specific quirks and training data of the world's leading AI image models.
+
+*   **`Flux`**: Optimized for complex, natural language descriptions and photorealistic textures. It emphasizes physical interactions and subtle lighting details.
+*   **`Midjourney`**: Focuses on artistic mood and stylistic keywords. It leans into aesthetic descriptors (e.g., "ethereal", "hyper-detailed") and composition-heavy phrasing.
+*   **`Stable Diffusion`**: Prioritizes keyword ordering and uses "high-weight" tokens commonly found in SD community models (e.g., "Trending on Artstation", "Unreal Engine 5").
+*   **`Gemini`**: A balanced, conversational approach that uses the model's inherent understanding of context to create highly versatile and accurate descriptions.
 
 ### 07: Dynamics & Logic
 *   **Duration**: Set how long each visual segment should last.
