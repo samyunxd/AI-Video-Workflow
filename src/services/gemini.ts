@@ -19,7 +19,9 @@ export async function generateBulkPrompts(
   allowedMotions: string[] = ['Static Camera'],
   strictImage: boolean = false,
   allowedShotTypes: string[] = ['Wide Shot', 'Medium Shot', 'Close-up'],
-  promptInstructions: string = ""
+  promptInstructions: string = "",
+  promptMode: string = "Structured Prompt",
+  engine: string = "Gemini"
 ): Promise<ScenePrompt[]> {
   // Use custom key if provided, otherwise fallback to env
   // Access process.env safely to avoid ReferenceError in Vite production
@@ -52,6 +54,34 @@ export async function generateBulkPrompts(
        - DO NOT apply this multi-shot logic to "imagePrompt". The "imagePrompt" MUST remain a single, high-quality starting frame.`
     : "Standard single-view cinematic shots.";
 
+  const promptModeInstruction = (function() {
+    switch(promptMode) {
+      case 'General Image Prompt':
+        return 'IMAGE PROMPT STRATEGY: Write flowing, descriptive paragraphs. Focus on narrative and visual depth.';
+      case 'Graphic Design':
+        return 'IMAGE PROMPT STRATEGY: Focus on vector art, flat design, typography, brand aesthetics, and clean layouts.';
+      case 'JSON':
+        return 'IMAGE PROMPT STRATEGY: Wrap visual descriptions in a technical, data-like format (e.g. "Subject: {details}, Atmosphere: {details}").';
+      case 'Structured Prompt':
+      default:
+        return 'IMAGE PROMPT STRATEGY: Use a comma-separated list of visual elements. Start with composition/shot type.';
+    }
+  })();
+
+  const engineInstruction = (function() {
+    switch(engine) {
+      case 'Flux':
+        return 'TARGET ENGINE (FLUX): Optimized for complex natural language and photorealism. Be descriptive about textures and light interactions.';
+      case 'Midjourney':
+        return 'TARGET ENGINE (MIDJOURNEY): Use aesthetic keywords. Append stylized tags. Focus on composition and mood. Mention aspect ratios if relevant.';
+      case 'Stable Diffusion':
+        return 'TARGET ENGINE (STABLE DIFFUSION): Use prioritized keywords and weights. Focus on tags like "masterpiece", "trending on artstation", etc.';
+      case 'Gemini':
+      default:
+        return 'TARGET ENGINE (GEMINI): Use detailed, conversational, and context-aware descriptions.';
+    }
+  })();
+
   const scriptWordCount = script.split(/\s+/).length;
   const wordsPerScene = Math.max(1, Math.round(wordsPerSecond * secondsPerScene));
   const expectedSceneCount = Math.ceil(scriptWordCount / wordsPerScene);
@@ -64,9 +94,9 @@ STRICT RULES:
 2. DISCRETE SEGMENTS: YOU MUST generate AT LEAST ${expectedSceneCount} rows. If the script is complex, generate more.
 3. PACING & BALANCE: Each "scriptSegment" SHOULD be approximately ${wordsPerScene} words (±20%). NEVER put more than ${Math.ceil(wordsPerScene * 1.5)} words in a single row. If the remaining text is large, split it into multiple rows until the end. DO NOT RUSH THE ENDING.
 4. SCRIPT SEGMENT: The "scriptSegment" field MUST contain the EXACT, ORIGINAL LITERAL TEXT from the input script for that beat. DO NOT summarize, paraphrase, or take shortcuts.
-5. imagePrompt FORMAT: Create a rich, descriptive list of visual elements separated by commas. 
-   EXAMPLE PATTERN: "[Shot Type], [Subject description], [Atmosphere/Environment], [Lighting], [Textural details], [Style keywords]"
-   INSPIRATION: "Busy 1700s Lisbon harbor filled with large Portuguese trading ships, towering wooden galleons, creaking timber docks, crashing Atlantic waves, sailors shouting, ropes and barrels, dramatic cloudy sky, cinematic realism, rich textures, golden morning light, 4k masterpiece."
+5. imagePrompt FORMAT: ${promptModeInstruction}
+
+ENGINE OPTIMIZATION: ${engineInstruction}
 
 REQUIRED FIELDS:
 - "scriptSegment": The literal text covered.

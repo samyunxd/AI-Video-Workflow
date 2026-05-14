@@ -33,6 +33,8 @@ export default function App() {
   const [multiview, setMultiview] = useState(() => localStorage.getItem('cb_mv') === 'true');
   const [strictImage, setStrictImage] = useState(() => localStorage.getItem('cb_strict') === 'true');
   const [promptInstructions, setPromptInstructions] = useState(() => localStorage.getItem('cb_pi') || '');
+  const [promptMode, setPromptMode] = useState(() => localStorage.getItem('cb_pm') || 'Structured Prompt');
+  const [engine, setEngine] = useState(() => localStorage.getItem('cb_eng') || 'Gemini');
   const [selectedMotions, setSelectedMotions] = useState<string[]>(() => {
     const saved = localStorage.getItem('cb_motions');
     return saved ? JSON.parse(saved) : ['Static Camera', 'Pan Right', 'Tilt Down', 'Zoom In', 'Tracking Shot'];
@@ -59,6 +61,8 @@ export default function App() {
   useEffect(() => localStorage.setItem('cb_mv', multiview.toString()), [multiview]);
   useEffect(() => localStorage.setItem('cb_strict', strictImage.toString()), [strictImage]);
   useEffect(() => localStorage.setItem('cb_pi', promptInstructions), [promptInstructions]);
+  useEffect(() => localStorage.setItem('cb_pm', promptMode), [promptMode]);
+  useEffect(() => localStorage.setItem('cb_eng', engine), [engine]);
   useEffect(() => localStorage.setItem('cb_motions', JSON.stringify(selectedMotions)), [selectedMotions]);
   useEffect(() => localStorage.setItem('cb_shots', JSON.stringify(selectedShotTypes)), [selectedShotTypes]);
   useEffect(() => localStorage.setItem('cb_scenes', JSON.stringify(scenes)), [scenes]);
@@ -82,7 +86,9 @@ export default function App() {
         selectedMotions,
         strictImage,
         selectedShotTypes,
-        promptInstructions
+        promptInstructions,
+        promptMode,
+        engine
       );
       setScenes(results);
     } catch (err: any) {
@@ -214,7 +220,7 @@ export default function App() {
             exit={{ height: 0, opacity: 0 }}
             className="overflow-hidden border-b border-slate-700/50 shrink-0"
           >
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8 gap-4 px-6 py-4 bg-[#1E293B]/50 items-start">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 xl:grid-cols-10 gap-4 px-6 py-4 bg-[#1E293B]/50 items-start">
               <div className="col-span-1">
                 <label className="block text-[9px] uppercase font-bold text-slate-500 mb-1.5 tracking-wider">01. Script</label>
                 <textarea 
@@ -255,7 +261,43 @@ export default function App() {
                 />
               </div>
               <div className="col-span-1">
-                <label className="block text-[9px] uppercase font-bold text-slate-500 mb-1.5 tracking-wider">05. Dynamics</label>
+                <label className="block text-[9px] uppercase font-bold text-slate-500 mb-1.5 tracking-wider">05. Prompt Mode</label>
+                <div className="grid grid-cols-1 gap-1">
+                  {['General Image Prompt', 'Structured Prompt', 'Graphic Design', 'JSON'].map((mode) => (
+                    <button
+                      key={mode}
+                      onClick={() => setPromptMode(mode)}
+                      className={`text-left px-2 py-1 rounded text-[10px] transition-all border ${
+                        promptMode === mode 
+                          ? 'bg-indigo-500/20 border-indigo-500 text-indigo-400 font-bold' 
+                          : 'bg-[#0F172A] border-slate-700 text-slate-500 group-hover:text-slate-300'
+                      }`}
+                    >
+                      {mode}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="col-span-1">
+                <label className="block text-[9px] uppercase font-bold text-slate-500 mb-1.5 tracking-wider">06. Engine</label>
+                <div className="grid grid-cols-2 gap-1">
+                  {['Flux', 'Midjourney', 'Stable Diffusion', 'Gemini'].map((eng) => (
+                    <button
+                      key={eng}
+                      onClick={() => setEngine(eng)}
+                      className={`text-center py-1 rounded text-[10px] transition-all border ${
+                        engine === eng 
+                          ? 'bg-indigo-500/20 border-indigo-500 text-indigo-400 font-bold' 
+                          : 'bg-[#0F172A] border-slate-700 text-slate-500'
+                      }`}
+                    >
+                      {eng}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="col-span-1">
+                <label className="block text-[9px] uppercase font-bold text-slate-500 mb-1.5 tracking-wider">07. Dynamics</label>
                 <div className="relative group mb-2">
                   <select 
                     className="w-full bg-[#0F172A] border border-slate-700 rounded-lg p-2 text-[11px] text-slate-300 outline-none appearance-none cursor-pointer focus:border-indigo-500 transition-colors"
@@ -293,7 +335,7 @@ export default function App() {
                       id="strict-toggle"
                     >
                       <Zap className="w-3 h-3" />
-                      <span className="text-[8px] font-bold uppercase tracking-wider">Strict Mode</span>
+                      <span className="text-[8px] font-bold uppercase tracking-wider">Strict</span>
                     </button>
                     <button 
                       onClick={() => setMultiview(!multiview)}
@@ -301,13 +343,13 @@ export default function App() {
                       id="multiview-toggle"
                     >
                       <LayoutGrid className="w-3 h-3" />
-                      <span className="text-[8px] font-bold uppercase tracking-wider">Multiview</span>
+                      <span className="text-[8px] font-bold uppercase tracking-wider">Multi</span>
                     </button>
                   </div>
                 </div>
               </div>
               <div className="col-span-1">
-                <label className="block text-[9px] uppercase font-bold text-slate-500 mb-1.5 tracking-wider">06. Camera</label>
+                <label className="block text-[9px] uppercase font-bold text-slate-500 mb-1.5 tracking-wider">08. Camera</label>
                 <div className="bg-[#0F172A] border border-slate-700 rounded-lg p-1.5 h-20 overflow-y-auto custom-scrollbar">
                   <div className="grid grid-cols-1 gap-0.5">
                     {shotTypeOptions.map((opt) => (
@@ -325,7 +367,7 @@ export default function App() {
                 </div>
               </div>
               <div className="col-span-1">
-                <label className="block text-[9px] uppercase font-bold text-slate-500 mb-1.5 tracking-wider">07. Motion</label>
+                <label className="block text-[9px] uppercase font-bold text-slate-500 mb-1.5 tracking-wider">09. Motion</label>
                 <div className="bg-[#0F172A] border border-slate-700 rounded-lg p-1.5 h-20 overflow-y-auto custom-scrollbar">
                   <div className="grid grid-cols-1 gap-0.5">
                     {motionOptions.map((opt) => (
