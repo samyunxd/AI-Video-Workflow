@@ -2,6 +2,19 @@
 
 A professional batch processing tool designed for cinematic prompt engineering. This application transforms long-form scripts into a precise, time-coded sequence of image and motion prompts optimized for AI video generation.
 
+---
+
+## 🌟 What's New (v2.0 Release)
+
+*   **Custom Prompt Instructions**: New dedicated area for global rules and artistic directives.
+*   **Engine-Specific Tuning**: Tailored output profiles for **Flux, Midjourney, Stable Diffusion,** and **Gemini**.
+*   **Flexible UI Architecture**: Collapsible settings bar with a smart 10-column dynamic grid.
+*   **New Prompt Modes**: Choose between **Structured, General, Graphic Design,** or **JSON** formats.
+*   **UI Polish**: Added "Aesthetic" custom scrollbars and density-focused layouts for professional use.
+*   **Pacing Logic**: Enhanced script distribution to ensure smooth narrative flow even in complex ending segments.
+
+---
+
 ## 🚀 Quick Start
 
 1. **Enter Your Gemini API Key**: Paste your key in the header. For security, it is stored only in your local session.
