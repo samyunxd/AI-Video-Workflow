@@ -479,12 +479,16 @@ export default function App() {
                   </div>
                   
                   <div className="p-4 border-l border-slate-800/50 relative group/cell flex flex-col justify-center">
-                    <p className="text-[12px] text-slate-400 leading-relaxed font-sans">{scene.imagePrompt}</p>
-                    <div className="mt-2 p-1.5 bg-red-950/20 border border-red-500/10 rounded text-[10px] text-red-300/40 italic leading-tight">
-                      Neg: {scene.negativePrompt}
-                    </div>
+                    <p className="text-[12px] text-slate-400 leading-relaxed font-sans">
+                      {scene.imagePrompt}
+                      {scene.negativePrompt && (
+                        <span className="text-red-300 ml-2 italic text-[11px]">
+                          [NEG: {scene.negativePrompt}]
+                        </span>
+                      )}
+                    </p>
                     <button 
-                      onClick={() => handleCopy(scene.imagePrompt)}
+                      onClick={() => handleCopy(`${scene.imagePrompt}${scene.negativePrompt ? ` --no ${scene.negativePrompt}` : ''}`)}
                       className="absolute top-2 right-2 p-1 bg-slate-900 border border-slate-700 rounded opacity-0 group-hover/cell:opacity-100 transition-all hover:bg-indigo-600 hover:border-indigo-500 text-slate-400 hover:text-white shadow-xl"
                     >
                       <Copy className="w-3 h-3" />
