@@ -21,6 +21,7 @@ export interface Workspace {
   name: string;
   description?: string;
   logo?: string;
+  themeColor?: string;
   createdAt: number;
   updatedAt: number;
   data: WorkspaceData;

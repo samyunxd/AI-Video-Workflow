@@ -45,6 +45,8 @@ const DEFAULT_DATA: WorkspaceData = {
   scenes: []
 };
 
+const DEFAULT_THEME_COLOR = '#6366F1';
+
 export default function App() {
   const [workspaces, setWorkspaces] = useState<Workspace[]>(() => {
     const saved = localStorage.getItem('v2_workspaces');
@@ -109,13 +111,14 @@ export default function App() {
     }));
   };
 
-  const handleCreateWorkspace = (name: string, description: string, logo?: string) => {
+  const handleCreateWorkspace = (name: string, description: string, logo?: string, themeColor?: string) => {
     const id = crypto.randomUUID();
     const newWs: Workspace = {
       id,
       name,
       description,
       logo,
+      themeColor: themeColor || DEFAULT_THEME_COLOR,
       createdAt: Date.now(),
       updatedAt: Date.now(),
       data: { ...DEFAULT_DATA }
@@ -125,9 +128,9 @@ export default function App() {
     toast.success(`Created "${name}"`);
   };
 
-  const handleUpdateWorkspace = (id: string, name: string, description: string, logo?: string) => {
+  const handleUpdateWorkspace = (id: string, name: string, description: string, logo?: string, themeColor?: string) => {
     setWorkspaces(prev => prev.map(ws => 
-      ws.id === id ? { ...ws, name, description, logo, updatedAt: Date.now() } : ws
+      ws.id === id ? { ...ws, name, description, logo, themeColor, updatedAt: Date.now() } : ws
     ));
     toast.success("Workspace updated");
   };

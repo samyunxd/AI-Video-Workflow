@@ -17,9 +17,9 @@ interface WorkspaceDashboardProps {
   apiKey: string;
   onApiKeyChange: (key: string) => void;
   onSelect: (workspace: Workspace) => void;
-  onCreate: (name: string, description: string, logo: string) => void;
+  onCreate: (name: string, description: string, logo: string, themeColor: string) => void;
   onDelete: (id: string) => void;
-  onUpdate: (id: string, name: string, description: string, logo: string) => void;
+  onUpdate: (id: string, name: string, description: string, logo: string, themeColor: string) => void;
 }
 
 export default function WorkspaceDashboard({ 
@@ -40,7 +40,76 @@ export default function WorkspaceDashboard({
   const [formName, setFormName] = React.useState('');
   const [formDesc, setFormDesc] = React.useState('');
   const [formLogo, setFormLogo] = React.useState('');
+  const [formColor, setFormColor] = React.useState('#6366F1');
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const extractDominantColor = (imageUrl: string): Promise<string> => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          resolve('#6366F1');
+          return;
+        }
+        
+        // Resize for faster processing
+        const size = 50;
+        canvas.width = size;
+        canvas.height = size;
+        ctx.drawImage(img, 0, 0, size, size);
+        
+        try {
+          const data = ctx.getImageData(0, 0, size, size).data;
+          let r = 0, g = 0, b = 0;
+          let count = 0;
+          
+          for (let i = 0; i < data.length; i += 4) {
+            // Ignore transparent or near-black/near-white pixels
+            if (data[i+3] < 128) continue;
+            const brightness = (data[i] * 299 + data[i+1] * 587 + data[i+2] * 114) / 1000;
+            if (brightness < 30 || brightness > 230) continue;
+            
+            r += data[i];
+            g += data[i+1];
+            b += data[i+2];
+            count++;
+          }
+          
+          if (count === 0) {
+            resolve('#6366F1');
+            return;
+          }
+
+          r = Math.floor(r / count);
+          g = Math.floor(g / count);
+          b = Math.floor(b / count);
+          
+          // Convert to hex
+          const toHex = (c: number) => c.toString(16).padStart(2, '0');
+          resolve(`#${toHex(r)}${toHex(g)}${toHex(b)}`);
+        } catch (e) {
+          resolve('#6366F1');
+        }
+      };
+      img.onerror = () => resolve('#6366F1');
+      img.src = imageUrl;
+    });
+  };
+
+  React.useEffect(() => {
+    const updateColor = async () => {
+      if (formLogo && (formLogo.startsWith('data:') || formLogo.startsWith('http'))) {
+        const color = await extractDominantColor(formLogo);
+        setFormColor(color);
+      } else {
+        setFormColor('#6366F1');
+      }
+    };
+    updateColor();
+  }, [formLogo]);
 
   const filteredWorkspaces = workspaces.filter(ws => 
     ws.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -51,6 +120,7 @@ export default function WorkspaceDashboard({
     setFormName(`Workspace ${workspaces.length + 1}`);
     setFormDesc('');
     setFormLogo('');
+    setFormColor('#6366F1');
     setIsModalOpen(true);
   };
 
@@ -59,6 +129,7 @@ export default function WorkspaceDashboard({
     setFormName(ws.name);
     setFormDesc(ws.description || '');
     setFormLogo(ws.logo || '');
+    setFormColor(ws.themeColor || '#6366F1');
     setIsModalOpen(true);
   };
 
@@ -95,9 +166,9 @@ export default function WorkspaceDashboard({
     if (!formName.trim()) return;
 
     if (editingWorkspace) {
-      onUpdate(editingWorkspace.id, formName, formDesc, formLogo);
+      onUpdate(editingWorkspace.id, formName, formDesc, formLogo, formColor);
     } else {
-      onCreate(formName, formDesc, formLogo);
+      onCreate(formName, formDesc, formLogo, formColor);
     }
     setIsModalOpen(false);
   };
@@ -200,30 +271,39 @@ export default function WorkspaceDashboard({
                       )}
                     </div>
                     <div className="flex-1 space-y-3">
-                      <div className="flex gap-2">
-                        <input 
-                          type="file" 
-                          ref={fileInputRef}
-                          onChange={handleLogoUpload}
-                          accept="image/*"
-                          className="hidden"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => fileInputRef.current?.click()}
-                          className="flex-1 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold transition-all"
-                        >
-                          Upload Image
-                        </button>
-                        {formLogo && (
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[9px] uppercase font-bold text-slate-500">Detected Ambient</span>
+                          <div 
+                            className="w-2 h-2 rounded-full animate-pulse" 
+                            style={{ backgroundColor: formColor }}
+                          />
+                        </div>
+                        <div className="flex gap-2">
+                          <input 
+                            type="file" 
+                            ref={fileInputRef}
+                            onChange={handleLogoUpload}
+                            accept="image/*"
+                            className="hidden"
+                          />
                           <button
                             type="button"
-                            onClick={() => setFormLogo('')}
-                            className="px-4 py-2 bg-slate-800 hover:bg-red-500/20 hover:text-red-400 text-slate-400 rounded-lg text-xs font-bold transition-all"
+                            onClick={() => fileInputRef.current?.click()}
+                            className="flex-1 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold transition-all"
                           >
-                            Remove
+                            Upload Image
                           </button>
-                        )}
+                          {formLogo && (
+                            <button
+                              type="button"
+                              onClick={() => setFormLogo('')}
+                              className="px-4 py-2 bg-slate-800 hover:bg-red-500/20 hover:text-red-400 text-slate-400 rounded-lg text-xs font-bold transition-all"
+                            >
+                              Remove
+                            </button>
+                          )}
+                        </div>
                       </div>
                       <div className="relative">
                         <input 
@@ -342,18 +422,42 @@ export default function WorkspaceDashboard({
                   layoutId={ws.id}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="bg-[#1E293B] border border-slate-700/50 rounded-2xl p-6 group hover:border-indigo-500/50 transition-all cursor-pointer relative flex flex-col h-full"
+                  className="bg-[#1E293B] border border-slate-700/50 rounded-2xl p-6 group hover:border-indigo-500/50 transition-all cursor-pointer relative flex flex-col h-full overflow-hidden"
                   onClick={() => onSelect(ws)}
+                  style={{
+                    boxShadow: `0 0 60px -20px ${ws.themeColor || '#6366F1'}66`,
+                    background: `linear-gradient(135deg, #1E293B 0%, #111827 100%)`,
+                  } as any}
                 >
+                  {/* Ambient Glow Gradient Layer */}
+                  <div 
+                    className="absolute inset-0 opacity-30 group-hover:opacity-60 transition-opacity duration-500 pointer-events-none"
+                    style={{ 
+                      background: `radial-gradient(circle at 50% 0%, ${ws.themeColor || '#6366F1'}ff, transparent 80%)`,
+                    }}
+                  />
+                  
+                  {/* Secondary Ambient Light */}
+                  <div 
+                    className="absolute -top-24 -left-24 w-64 h-64 blur-[80px] opacity-[0.15] group-hover:opacity-[0.3] transition-opacity duration-700 rounded-full pointer-events-none"
+                    style={{ backgroundColor: ws.themeColor || '#6366F1' }}
+                  />
+
                   <div className="flex justify-between items-start mb-6">
-                    <div className="w-12 h-12 bg-indigo-500/10 rounded-xl overflow-hidden flex items-center justify-center group-hover:bg-indigo-500/20 transition-all text-2xl border border-indigo-500/10">
+                    <div 
+                      className="w-12 h-12 bg-indigo-500/10 rounded-xl overflow-hidden flex items-center justify-center group-hover:bg-indigo-500/20 transition-all text-2xl border border-indigo-500/10 relative z-10"
+                      style={{ 
+                        borderColor: `${ws.themeColor}33`,
+                        backgroundColor: `${ws.themeColor}1a`
+                      }}
+                    >
                       {ws.logo ? (
                         <img src={ws.logo} alt={ws.name} className="w-full h-full object-cover" />
                       ) : (
-                        <Layout className="w-6 h-6 text-indigo-400" />
+                        <Layout className="w-6 h-6" style={{ color: ws.themeColor || '#818CF8' }} />
                       )}
                     </div>
-                    <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity relative z-10">
                       <button 
                         onClick={(e) => {
                           e.stopPropagation();
