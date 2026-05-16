@@ -39,9 +39,8 @@ export default function WorkspaceDashboard({
   const [editingWorkspace, setEditingWorkspace] = React.useState<Workspace | null>(null);
   const [formName, setFormName] = React.useState('');
   const [formDesc, setFormDesc] = React.useState('');
-  const [formLogo, setFormLogo] = React.useState('💼');
-
-  const logoOptions = ['💼', '🎬', '🚀', '🎨', '🔥', '✨', '🎥', '💡', '🎮', '📱', '🌍', '🛠️'];
+  const [formLogo, setFormLogo] = React.useState('');
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const filteredWorkspaces = workspaces.filter(ws => 
     ws.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -51,7 +50,7 @@ export default function WorkspaceDashboard({
     setEditingWorkspace(null);
     setFormName(`Workspace ${workspaces.length + 1}`);
     setFormDesc('');
-    setFormLogo('💼');
+    setFormLogo('');
     setIsModalOpen(true);
   };
 
@@ -59,8 +58,23 @@ export default function WorkspaceDashboard({
     setEditingWorkspace(ws);
     setFormName(ws.name);
     setFormDesc(ws.description || '');
-    setFormLogo(ws.logo || '💼');
+    setFormLogo(ws.logo || '');
     setIsModalOpen(true);
+  };
+
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) { // 2MB limit for local storage safety
+        alert('Image too large (max 2MB)');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormLogo(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleOpenDelete = (ws: Workspace) => {
@@ -176,22 +190,51 @@ export default function WorkspaceDashboard({
               </h2>
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div>
-                  <label className="block text-[10px] uppercase font-bold text-slate-500 mb-4 tracking-widest">Select Workspace Logo</label>
-                  <div className="grid grid-cols-6 gap-3 mb-6">
-                    {logoOptions.map((logo) => (
-                      <button
-                        key={logo}
-                        type="button"
-                        onClick={() => setFormLogo(logo)}
-                        className={`w-10 h-10 flex items-center justify-center rounded-xl text-xl transition-all border ${
-                          formLogo === logo 
-                            ? 'bg-indigo-500/20 border-indigo-500 scale-110 shadow-lg shadow-indigo-500/20' 
-                            : 'bg-[#0F172A] border-slate-700/50 hover:border-slate-600'
-                        }`}
-                      >
-                        {logo}
-                      </button>
-                    ))}
+                  <label className="block text-[10px] uppercase font-bold text-slate-500 mb-3 tracking-widest">Workspace Logo</label>
+                  <div className="flex items-center gap-6 mb-6 p-4 bg-[#0F172A] rounded-2xl border border-slate-800/50">
+                    <div className="w-16 h-16 bg-slate-800 rounded-xl overflow-hidden flex items-center justify-center shrink-0 border border-slate-700/50">
+                      {formLogo ? (
+                        <img src={formLogo} alt="Logo Preview" className="w-full h-full object-cover" />
+                      ) : (
+                        <Layout className="w-8 h-8 text-slate-600" />
+                      )}
+                    </div>
+                    <div className="flex-1 space-y-3">
+                      <div className="flex gap-2">
+                        <input 
+                          type="file" 
+                          ref={fileInputRef}
+                          onChange={handleLogoUpload}
+                          accept="image/*"
+                          className="hidden"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          className="flex-1 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold transition-all"
+                        >
+                          Upload Image
+                        </button>
+                        {formLogo && (
+                          <button
+                            type="button"
+                            onClick={() => setFormLogo('')}
+                            className="px-4 py-2 bg-slate-800 hover:bg-red-500/20 hover:text-red-400 text-slate-400 rounded-lg text-xs font-bold transition-all"
+                          >
+                            Remove
+                          </button>
+                        )}
+                      </div>
+                      <div className="relative">
+                        <input 
+                          type="text" 
+                          value={formLogo.startsWith('data:') ? '' : formLogo}
+                          onChange={(e) => setFormLogo(e.target.value)}
+                          className="w-full bg-[#1E293B] border border-slate-700/50 rounded-lg px-3 py-2 text-[11px] text-slate-400 outline-none focus:border-indigo-500 transition-all font-mono"
+                          placeholder="Or paste image URL..."
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
                 <div>
@@ -303,8 +346,12 @@ export default function WorkspaceDashboard({
                   onClick={() => onSelect(ws)}
                 >
                   <div className="flex justify-between items-start mb-6">
-                    <div className="w-12 h-12 bg-indigo-500/10 rounded-xl flex items-center justify-center group-hover:bg-indigo-500/20 transition-all text-2xl">
-                      {ws.logo || <Layout className="w-6 h-6 text-indigo-400" />}
+                    <div className="w-12 h-12 bg-indigo-500/10 rounded-xl overflow-hidden flex items-center justify-center group-hover:bg-indigo-500/20 transition-all text-2xl border border-indigo-500/10">
+                      {ws.logo ? (
+                        <img src={ws.logo} alt={ws.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <Layout className="w-6 h-6 text-indigo-400" />
+                      )}
                     </div>
                     <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button 
