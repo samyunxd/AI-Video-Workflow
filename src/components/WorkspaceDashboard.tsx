@@ -436,6 +436,17 @@ export default function WorkspaceDashboard({
                       background: `radial-gradient(circle at 50% 0%, ${ws.themeColor || '#6366F1'}ff, transparent 80%)`,
                     }}
                   />
+
+                  {/* Spider Web Pattern Overlay */}
+                  <div 
+                    className="absolute inset-0 opacity-[0.15] group-hover:opacity-[0.25] transition-all duration-700 pointer-events-none"
+                    style={{ 
+                      backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Cg stroke='${encodeURIComponent(ws.themeColor || '#6366F1')}' stroke-width='0.5' fill='none'%3E%3Cpath d='M50 50 L100 50 M50 50 L85.35 85.35 M50 50 L50 100 M50 50 L14.65 85.35 M50 50 L0 50 M50 50 L14.65 14.65 M50 50 L50 0 M50 50 L85.35 14.65' /%3E%3Ccircle cx='50' cy='50' r='15' /%3E%3Ccircle cx='50' cy='50' r='30' /%3E%3Ccircle cx='50' cy='50' r='45' /%3E%3C/g%3E%3C/svg%3E")`,
+                      backgroundSize: '100px 100px',
+                      maskImage: 'linear-gradient(to bottom, black 0%, transparent 90%)',
+                      WebkitMaskImage: 'linear-gradient(to bottom, black 0%, transparent 90%)'
+                    }}
+                  />
                   
                   {/* Secondary Ambient Light */}
                   <div 
