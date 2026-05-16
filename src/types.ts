@@ -4,7 +4,6 @@ export interface WorkspaceData {
   script: string;
   style: string;
   negativePrompt: string;
-  customApiKey: string;
   secondsPerScene: number;
   wordsPerSecond: number;
   multiview: boolean;
@@ -21,6 +20,7 @@ export interface Workspace {
   id: string;
   name: string;
   description?: string;
+  logo?: string;
   createdAt: number;
   updatedAt: number;
   data: WorkspaceData;

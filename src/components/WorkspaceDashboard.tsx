@@ -14,14 +14,18 @@ import { Workspace } from '../types';
 
 interface WorkspaceDashboardProps {
   workspaces: Workspace[];
+  apiKey: string;
+  onApiKeyChange: (key: string) => void;
   onSelect: (workspace: Workspace) => void;
-  onCreate: (name: string, description: string) => void;
+  onCreate: (name: string, description: string, logo: string) => void;
   onDelete: (id: string) => void;
-  onUpdate: (id: string, name: string, description: string) => void;
+  onUpdate: (id: string, name: string, description: string, logo: string) => void;
 }
 
 export default function WorkspaceDashboard({ 
   workspaces, 
+  apiKey,
+  onApiKeyChange,
   onSelect, 
   onCreate, 
   onDelete,
@@ -35,6 +39,9 @@ export default function WorkspaceDashboard({
   const [editingWorkspace, setEditingWorkspace] = React.useState<Workspace | null>(null);
   const [formName, setFormName] = React.useState('');
   const [formDesc, setFormDesc] = React.useState('');
+  const [formLogo, setFormLogo] = React.useState('💼');
+
+  const logoOptions = ['💼', '🎬', '🚀', '🎨', '🔥', '✨', '🎥', '💡', '🎮', '📱', '🌍', '🛠️'];
 
   const filteredWorkspaces = workspaces.filter(ws => 
     ws.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -44,6 +51,7 @@ export default function WorkspaceDashboard({
     setEditingWorkspace(null);
     setFormName(`Workspace ${workspaces.length + 1}`);
     setFormDesc('');
+    setFormLogo('💼');
     setIsModalOpen(true);
   };
 
@@ -51,6 +59,7 @@ export default function WorkspaceDashboard({
     setEditingWorkspace(ws);
     setFormName(ws.name);
     setFormDesc(ws.description || '');
+    setFormLogo(ws.logo || '💼');
     setIsModalOpen(true);
   };
 
@@ -72,9 +81,9 @@ export default function WorkspaceDashboard({
     if (!formName.trim()) return;
 
     if (editingWorkspace) {
-      onUpdate(editingWorkspace.id, formName, formDesc);
+      onUpdate(editingWorkspace.id, formName, formDesc, formLogo);
     } else {
-      onCreate(formName, formDesc);
+      onCreate(formName, formDesc, formLogo);
     }
     setIsModalOpen(false);
   };
@@ -167,6 +176,25 @@ export default function WorkspaceDashboard({
               </h2>
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div>
+                  <label className="block text-[10px] uppercase font-bold text-slate-500 mb-4 tracking-widest">Select Workspace Logo</label>
+                  <div className="grid grid-cols-6 gap-3 mb-6">
+                    {logoOptions.map((logo) => (
+                      <button
+                        key={logo}
+                        type="button"
+                        onClick={() => setFormLogo(logo)}
+                        className={`w-10 h-10 flex items-center justify-center rounded-xl text-xl transition-all border ${
+                          formLogo === logo 
+                            ? 'bg-indigo-500/20 border-indigo-500 scale-110 shadow-lg shadow-indigo-500/20' 
+                            : 'bg-[#0F172A] border-slate-700/50 hover:border-slate-600'
+                        }`}
+                      >
+                        {logo}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
                   <label className="block text-[10px] uppercase font-bold text-slate-500 mb-2 tracking-widest">Name</label>
                   <input 
                     autoFocus
@@ -225,18 +253,20 @@ export default function WorkspaceDashboard({
           </div>
 
           {/* Search & Stats */}
-          <div className="flex flex-col md:flex-row gap-4 mb-8">
+          <div className="flex flex-col xl:flex-row gap-4 mb-8">
             <div className="relative flex-1">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
               <input 
                 type="text" 
                 placeholder="Search workspaces..." 
-                className="w-full bg-[#1E293B] border border-slate-700/50 rounded-xl pl-11 pr-4 py-3 text-slate-200 outline-none focus:border-indigo-500 transition-all"
+                className="w-full bg-[#1E293B] border border-slate-700/50 rounded-xl pl-11 pr-4 py-3 text-slate-200 outline-none focus:border-indigo-500 transition-all font-medium"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            {workspaces.length > 0 && (
+            
+            <div className="flex flex-col md:flex-row gap-4">
+              {workspaces.length > 0 && (
               <div className="flex gap-4">
                 <div className="bg-[#1E293B] border border-slate-700/50 px-6 py-3 rounded-xl flex items-center gap-3">
                   <Layout className="w-4 h-4 text-indigo-400" />
@@ -244,6 +274,7 @@ export default function WorkspaceDashboard({
                 </div>
               </div>
             )}
+           </div>
           </div>
 
           {/* Grid */}
@@ -272,8 +303,8 @@ export default function WorkspaceDashboard({
                   onClick={() => onSelect(ws)}
                 >
                   <div className="flex justify-between items-start mb-6">
-                    <div className="w-12 h-12 bg-indigo-500/10 rounded-xl flex items-center justify-center group-hover:bg-indigo-500/20 transition-all">
-                      <Layout className="w-6 h-6 text-indigo-400" />
+                    <div className="w-12 h-12 bg-indigo-500/10 rounded-xl flex items-center justify-center group-hover:bg-indigo-500/20 transition-all text-2xl">
+                      {ws.logo || <Layout className="w-6 h-6 text-indigo-400" />}
                     </div>
                     <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button 

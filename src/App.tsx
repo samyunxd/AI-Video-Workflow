@@ -33,7 +33,6 @@ const DEFAULT_DATA: WorkspaceData = {
   script: '',
   style: 'Cinematic, hyper-realistic, 8k, anamorphic lens flares, dramatic lighting, highly detailed textures',
   negativePrompt: 'blurry, low quality, distorted, deformed, text, watermarks, bad anatomy, simple background',
-  customApiKey: '',
   secondsPerScene: 5,
   wordsPerSecond: 2,
   multiview: false,
@@ -61,7 +60,6 @@ export default function App() {
         script: localStorage.getItem('cb_script') || '',
         style: localStorage.getItem('cb_style') || DEFAULT_DATA.style,
         negativePrompt: localStorage.getItem('cb_neg') || DEFAULT_DATA.negativePrompt,
-        customApiKey: localStorage.getItem('cb_key') || '',
         secondsPerScene: Number(localStorage.getItem('cb_sec')) || 5,
         wordsPerSecond: Number(localStorage.getItem('cb_wps')) || 2,
         multiview: localStorage.getItem('cb_mv') === 'true',
@@ -77,6 +75,7 @@ export default function App() {
     return [legacyWorkspace];
   });
 
+  const [geminiApiKey, setGeminiApiKey] = useState(() => localStorage.getItem('global_gemini_key') || '');
   const [activeWorkspaceId, setActiveWorkspaceId] = useState<string | null>(null);
   const [isConfigExpanded, setIsConfigExpanded] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -92,6 +91,10 @@ export default function App() {
     localStorage.setItem('v2_workspaces', JSON.stringify(workspaces));
   }, [workspaces]);
 
+  useEffect(() => {
+    localStorage.setItem('global_gemini_key', geminiApiKey);
+  }, [geminiApiKey]);
+
   const updateActiveWorkspace = (updates: Partial<WorkspaceData>) => {
     if (!activeWorkspaceId) return;
     setWorkspaces(prev => prev.map(ws => {
@@ -106,12 +109,13 @@ export default function App() {
     }));
   };
 
-  const handleCreateWorkspace = (name: string, description: string) => {
+  const handleCreateWorkspace = (name: string, description: string, logo?: string) => {
     const id = crypto.randomUUID();
     const newWs: Workspace = {
       id,
       name,
       description,
+      logo,
       createdAt: Date.now(),
       updatedAt: Date.now(),
       data: { ...DEFAULT_DATA }
@@ -121,9 +125,9 @@ export default function App() {
     toast.success(`Created "${name}"`);
   };
 
-  const handleUpdateWorkspace = (id: string, name: string, description: string) => {
+  const handleUpdateWorkspace = (id: string, name: string, description: string, logo?: string) => {
     setWorkspaces(prev => prev.map(ws => 
-      ws.id === id ? { ...ws, name, description, updatedAt: Date.now() } : ws
+      ws.id === id ? { ...ws, name, description, logo, updatedAt: Date.now() } : ws
     ));
     toast.success("Workspace updated");
   };
@@ -136,7 +140,7 @@ export default function App() {
 
   const handleGenerate = async () => {
     if (!activeWorkspace) return;
-    const { script, style, secondsPerScene, multiview, negativePrompt, customApiKey, wordsPerSecond, selectedMotions, strictImage, selectedShotTypes, promptInstructions, promptMode, engine } = activeWorkspace.data;
+    const { script, style, secondsPerScene, multiview, negativePrompt, wordsPerSecond, selectedMotions, strictImage, selectedShotTypes, promptInstructions, promptMode, engine } = activeWorkspace.data;
 
     if (!script.trim()) {
       toast.error("Script is empty. Please provide a script first.");
@@ -154,7 +158,7 @@ export default function App() {
         secondsPerScene, 
         multiview, 
         negativePrompt, 
-        customApiKey, 
+        geminiApiKey, 
         wordsPerSecond,
         selectedMotions,
         strictImage,
@@ -260,12 +264,29 @@ export default function App() {
             </div>
           </div>
           <div className="flex items-center gap-4">
-            <span className="text-xs text-slate-500 italic">Connected to Gemini Flash 3</span>
+            <div className="hidden md:flex items-center bg-slate-800/80 border border-slate-700/50 rounded-xl px-4 py-2 gap-3 focus-within:border-indigo-500/50 transition-all">
+              <div className="flex flex-col">
+                <label className="text-[9px] uppercase font-bold text-slate-500 tracking-wider">Gemini API Key</label>
+                <input 
+                  type="password"
+                  placeholder="Enter API Key..."
+                  className="bg-transparent text-xs text-indigo-400 outline-none w-48 placeholder:text-slate-700 font-mono"
+                  value={geminiApiKey}
+                  onChange={(e) => setGeminiApiKey(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="flex flex-col items-end">
+              <span className="text-xs text-slate-400 font-medium">Gemini Flash 3</span>
+              <span className="text-[10px] text-green-500 font-bold uppercase tracking-tighter">Connection Active</span>
+            </div>
           </div>
         </header>
 
         <WorkspaceDashboard 
           workspaces={workspaces}
+          apiKey={geminiApiKey}
+          onApiKeyChange={setGeminiApiKey}
           onCreate={handleCreateWorkspace}
           onDelete={handleDeleteWorkspace}
           onUpdate={handleUpdateWorkspace}
@@ -275,7 +296,7 @@ export default function App() {
     );
   }
 
-  const { script, style, negativePrompt, customApiKey, secondsPerScene, wordsPerSecond, multiview, strictImage, promptInstructions, promptMode, engine, selectedMotions, selectedShotTypes, scenes } = activeWorkspace.data;
+  const { script, style, negativePrompt, secondsPerScene, wordsPerSecond, multiview, strictImage, promptInstructions, promptMode, engine, selectedMotions, selectedShotTypes, scenes } = activeWorkspace.data;
 
   return (
     <div className="flex flex-col h-screen bg-[#0F172A] text-slate-200 font-sans overflow-hidden">
@@ -310,6 +331,18 @@ export default function App() {
           </div>
         </div>
         <div className="flex items-center gap-4">
+          <div className="hidden lg:flex items-center bg-slate-900/50 border border-slate-800 rounded-lg px-3 py-1.5 gap-3 focus-within:border-indigo-500/50 transition-all">
+            <div className="flex flex-col">
+              <label className="text-[8px] uppercase font-bold text-slate-600 tracking-wider">API Key</label>
+              <input 
+                type="password"
+                placeholder="Key..."
+                className="bg-transparent text-[11px] text-indigo-400 outline-none w-32 placeholder:text-slate-800 font-mono"
+                value={geminiApiKey}
+                onChange={(e) => setGeminiApiKey(e.target.value)}
+              />
+            </div>
+          </div>
           <button 
             onClick={() => setIsConfigExpanded(!isConfigExpanded)}
             className={`p-2 rounded border transition-all ${isConfigExpanded ? 'bg-slate-800 border-slate-700 text-indigo-400' : 'bg-indigo-600 border-indigo-500 text-white'}`}
@@ -317,19 +350,7 @@ export default function App() {
           >
             <Settings className={`w-4 h-4 ${isGenerating ? 'animate-spin' : ''}`} />
           </button>
-          <div className="flex items-center bg-slate-800 rounded-md p-1">
-            <div className="px-3 flex items-center gap-2 border-r border-slate-700 mr-2">
-              <span className="text-[10px] font-mono text-slate-500 uppercase tracking-widest">GEMINI_KEY:</span>
-              <input 
-                type="password" 
-                placeholder="Optional Custom Key..." 
-                className="bg-transparent text-xs text-indigo-400 outline-none w-32 placeholder:text-slate-600 focus:w-48 transition-all"
-                value={customApiKey}
-                onChange={(e) => updateActiveWorkspace({ customApiKey: e.target.value })}
-              />
-            </div>
-            <button className="px-3 py-1.5 text-xs font-medium bg-indigo-600 text-white rounded shadow-sm">100+ Batch</button>
-          </div>
+          <button className="px-3 py-1.5 text-xs font-medium bg-indigo-600 text-white rounded shadow-sm">100+ Batch</button>
           <button 
             onClick={handleGenerate}
             disabled={isGenerating}
