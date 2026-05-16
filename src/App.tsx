@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { 
   Play, 
   Settings, 
@@ -18,62 +18,135 @@ import {
   Type,
   LayoutGrid,
   Square,
-  Zap
+  Zap,
+  Home,
+  ChevronLeft
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { Toaster, toast } from 'sonner';
+import * as XLSX from 'xlsx';
 import { generateBulkPrompts, ScenePrompt } from './services/gemini';
+import { Workspace, WorkspaceData } from './types';
+import WorkspaceDashboard from './components/WorkspaceDashboard';
+
+const DEFAULT_DATA: WorkspaceData = {
+  script: '',
+  style: 'Cinematic, hyper-realistic, 8k, anamorphic lens flares, dramatic lighting, highly detailed textures',
+  negativePrompt: 'blurry, low quality, distorted, deformed, text, watermarks, bad anatomy, simple background',
+  customApiKey: '',
+  secondsPerScene: 5,
+  wordsPerSecond: 2,
+  multiview: false,
+  strictImage: false,
+  promptInstructions: '',
+  promptMode: 'Structured Prompt',
+  engine: 'Gemini',
+  selectedMotions: ['Static Camera', 'Pan Right', 'Tilt Down', 'Zoom In', 'Tracking Shot'],
+  selectedShotTypes: ['Wide Shot', 'Medium Shot', 'Close-up', 'Extreme Close-up', 'Low Angle', 'High Angle'],
+  scenes: []
+};
 
 export default function App() {
-  const [script, setScript] = useState(() => localStorage.getItem('cb_script') || '');
-  const [style, setStyle] = useState(() => localStorage.getItem('cb_style') || 'Cinematic, hyper-realistic, 8k, anamorphic lens flares, dramatic lighting, highly detailed textures');
-  const [negativePrompt, setNegativePrompt] = useState(() => localStorage.getItem('cb_neg') || 'blurry, low quality, distorted, deformed, text, watermarks, bad anatomy, simple background');
-  const [customApiKey, setCustomApiKey] = useState(() => localStorage.getItem('cb_key') || '');
-  const [secondsPerScene, setSecondsPerScene] = useState(() => Number(localStorage.getItem('cb_sec')) || 5);
-  const [wordsPerSecond, setWordsPerSecond] = useState(() => Number(localStorage.getItem('cb_wps')) || 2);
-  const [multiview, setMultiview] = useState(() => localStorage.getItem('cb_mv') === 'true');
-  const [strictImage, setStrictImage] = useState(() => localStorage.getItem('cb_strict') === 'true');
-  const [promptInstructions, setPromptInstructions] = useState(() => localStorage.getItem('cb_pi') || '');
-  const [promptMode, setPromptMode] = useState(() => localStorage.getItem('cb_pm') || 'Structured Prompt');
-  const [engine, setEngine] = useState(() => localStorage.getItem('cb_eng') || 'Gemini');
-  const [selectedMotions, setSelectedMotions] = useState<string[]>(() => {
-    const saved = localStorage.getItem('cb_motions');
-    return saved ? JSON.parse(saved) : ['Static Camera', 'Pan Right', 'Tilt Down', 'Zoom In', 'Tracking Shot'];
+  const [workspaces, setWorkspaces] = useState<Workspace[]>(() => {
+    const saved = localStorage.getItem('v2_workspaces');
+    if (saved) return JSON.parse(saved);
+    
+    // Legacy migration or initial setup
+    const legacyWorkspace: Workspace = {
+      id: 'default',
+      name: 'Default Workspace',
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      data: {
+        script: localStorage.getItem('cb_script') || '',
+        style: localStorage.getItem('cb_style') || DEFAULT_DATA.style,
+        negativePrompt: localStorage.getItem('cb_neg') || DEFAULT_DATA.negativePrompt,
+        customApiKey: localStorage.getItem('cb_key') || '',
+        secondsPerScene: Number(localStorage.getItem('cb_sec')) || 5,
+        wordsPerSecond: Number(localStorage.getItem('cb_wps')) || 2,
+        multiview: localStorage.getItem('cb_mv') === 'true',
+        strictImage: localStorage.getItem('cb_strict') === 'true',
+        promptInstructions: localStorage.getItem('cb_pi') || '',
+        promptMode: localStorage.getItem('cb_pm') || 'Structured Prompt',
+        engine: localStorage.getItem('cb_eng') || 'Gemini',
+        selectedMotions: JSON.parse(localStorage.getItem('cb_motions') || 'null') || DEFAULT_DATA.selectedMotions,
+        selectedShotTypes: JSON.parse(localStorage.getItem('cb_shots') || 'null') || DEFAULT_DATA.selectedShotTypes,
+        scenes: JSON.parse(localStorage.getItem('cb_scenes') || 'null') || []
+      }
+    };
+    return [legacyWorkspace];
   });
-  const [selectedShotTypes, setSelectedShotTypes] = useState<string[]>(() => {
-    const saved = localStorage.getItem('cb_shots');
-    return saved ? JSON.parse(saved) : ['Wide Shot', 'Medium Shot', 'Close-up', 'Extreme Close-up', 'Low Angle', 'High Angle'];
-  });
+
+  const [activeWorkspaceId, setActiveWorkspaceId] = useState<string | null>(null);
   const [isConfigExpanded, setIsConfigExpanded] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [scenes, setScenes] = useState<ScenePrompt[]>(() => {
-    const saved = localStorage.getItem('cb_scenes');
-    return saved ? JSON.parse(saved) : [];
-  });
   const [error, setError] = useState<string | null>(null);
 
-  // Persistence Effects
-  useEffect(() => localStorage.setItem('cb_script', script), [script]);
-  useEffect(() => localStorage.setItem('cb_style', style), [style]);
-  useEffect(() => localStorage.setItem('cb_neg', negativePrompt), [negativePrompt]);
-  useEffect(() => localStorage.setItem('cb_key', customApiKey), [customApiKey]);
-  useEffect(() => localStorage.setItem('cb_sec', secondsPerScene.toString()), [secondsPerScene]);
-  useEffect(() => localStorage.setItem('cb_wps', wordsPerSecond.toString()), [wordsPerSecond]);
-  useEffect(() => localStorage.setItem('cb_mv', multiview.toString()), [multiview]);
-  useEffect(() => localStorage.setItem('cb_strict', strictImage.toString()), [strictImage]);
-  useEffect(() => localStorage.setItem('cb_pi', promptInstructions), [promptInstructions]);
-  useEffect(() => localStorage.setItem('cb_pm', promptMode), [promptMode]);
-  useEffect(() => localStorage.setItem('cb_eng', engine), [engine]);
-  useEffect(() => localStorage.setItem('cb_motions', JSON.stringify(selectedMotions)), [selectedMotions]);
-  useEffect(() => localStorage.setItem('cb_shots', JSON.stringify(selectedShotTypes)), [selectedShotTypes]);
-  useEffect(() => localStorage.setItem('cb_scenes', JSON.stringify(scenes)), [scenes]);
+  const activeWorkspace = useMemo(() => 
+    workspaces.find(w => w.id === activeWorkspaceId), 
+    [workspaces, activeWorkspaceId]
+  );
+
+  // Persistence
+  useEffect(() => {
+    localStorage.setItem('v2_workspaces', JSON.stringify(workspaces));
+  }, [workspaces]);
+
+  const updateActiveWorkspace = (updates: Partial<WorkspaceData>) => {
+    if (!activeWorkspaceId) return;
+    setWorkspaces(prev => prev.map(ws => {
+      if (ws.id === activeWorkspaceId) {
+        return {
+          ...ws,
+          updatedAt: Date.now(),
+          data: { ...ws.data, ...updates }
+        };
+      }
+      return ws;
+    }));
+  };
+
+  const handleCreateWorkspace = (name: string, description: string) => {
+    const id = crypto.randomUUID();
+    const newWs: Workspace = {
+      id,
+      name,
+      description,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      data: { ...DEFAULT_DATA }
+    };
+    setWorkspaces([newWs, ...workspaces]);
+    setActiveWorkspaceId(id);
+    toast.success(`Created "${name}"`);
+  };
+
+  const handleUpdateWorkspace = (id: string, name: string, description: string) => {
+    setWorkspaces(prev => prev.map(ws => 
+      ws.id === id ? { ...ws, name, description, updatedAt: Date.now() } : ws
+    ));
+    toast.success("Workspace updated");
+  };
+
+  const handleDeleteWorkspace = (id: string) => {
+    setWorkspaces(prev => prev.filter(w => w.id !== id));
+    if (activeWorkspaceId === id) setActiveWorkspaceId(null);
+    toast.info("Workspace deleted");
+  };
 
   const handleGenerate = async () => {
+    if (!activeWorkspace) return;
+    const { script, style, secondsPerScene, multiview, negativePrompt, customApiKey, wordsPerSecond, selectedMotions, strictImage, selectedShotTypes, promptInstructions, promptMode, engine } = activeWorkspace.data;
+
     if (!script.trim()) {
+      toast.error("Script is empty. Please provide a script first.");
       setError("Please provide a script.");
       return;
     }
     setError(null);
     setIsGenerating(true);
+    const toastId = toast.loading("Synthesizing script into visual beats...");
+
     try {
       const results = await generateBulkPrompts(
         script, 
@@ -90,9 +163,15 @@ export default function App() {
         promptMode,
         engine
       );
-      setScenes(results);
+      updateActiveWorkspace({ scenes: results });
+      toast.success(`Successfully generated ${results.length} sequences`, { id: toastId });
     } catch (err: any) {
-      setError(err.message || "Failed to generate prompts. Please try again.");
+      const errorMsg = err.message || "Failed to generate prompts. Please try again.";
+      setError(errorMsg);
+      toast.error("Generation failed", { 
+        id: toastId,
+        description: errorMsg 
+      });
       console.error(err);
     } finally {
       setIsGenerating(false);
@@ -101,77 +180,134 @@ export default function App() {
 
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);
+    toast.success("Copied to clipboard", {
+      duration: 1500,
+      icon: <Copy className="w-3 h-3" />
+    });
   };
 
-  const exportCSV = () => {
-    const headers = ['ID', 'Script Segment', 'Image Prompt', 'Negative Prompt', 'Video Prompt'];
-    const rows = scenes.map(s => [s.id, s.scriptSegment, s.imagePrompt, s.negativePrompt, s.videoPrompt]);
-    const csvContent = [headers, ...rows]
-      .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
-      .join('\n\n');
-    
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.setAttribute('download', 'video_prompts.csv');
-    link.click();
+  const exportExcel = () => {
+    if (!activeWorkspace) return;
+    const { scenes } = activeWorkspace.data;
+    try {
+      const exportData: any[] = [];
+      
+      scenes.forEach((s, index) => {
+        exportData.push({
+          'SEQUENCE ID': s.id || String(index + 1).padStart(3, '0'),
+          'SCRIPT SEGMENT': s.scriptSegment,
+          'IMAGE PROMPT & NEGATIVE': `${s.imagePrompt}${s.negativePrompt ? ` [NEG: ${s.negativePrompt}]` : ''}`,
+          'VIDEO MOTION & ACTION': s.videoPrompt
+        });
+        
+        if (index < scenes.length - 1) {
+          exportData.push({
+            'SEQUENCE ID': '',
+            'SCRIPT SEGMENT': '',
+            'IMAGE PROMPT & NEGATIVE': '',
+            'VIDEO MOTION & ACTION': ''
+          }); 
+        }
+      });
+
+      const worksheet = XLSX.utils.json_to_sheet(exportData);
+      const wscols = [
+        { wch: 15 }, 
+        { wch: 50 }, 
+        { wch: 85 }, 
+        { wch: 65 }, 
+      ];
+      worksheet['!cols'] = wscols;
+
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Video Workflow");
+      XLSX.writeFile(workbook, `AI_Video_Workflow_${activeWorkspace.name.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0,10)}.xlsx`);
+      
+      toast.success("Excel export complete");
+    } catch (err) {
+      toast.error("Excel export failed");
+      console.error(err);
+    }
   };
 
   const motionOptions = [
-    'Static Camera',
-    'Pan Left',
-    'Pan Right',
-    'Tilt Up',
-    'Tilt Down',
-    'Zoom In',
-    'Zoom Out',
-    'Tracking Shot',
-    'Crane Shot',
-    'Handheld Shake'
+    'Static Camera', 'Pan Left', 'Pan Right', 'Tilt Up', 'Tilt Down', 'Zoom In', 'Zoom Out', 'Tracking Shot', 'Crane Shot', 'Handheld Shake'
   ];
-
-  const toggleMotion = (motion: string) => {
-    setSelectedMotions(prev => 
-      prev.includes(motion) 
-        ? prev.filter(m => m !== motion) 
-        : [...prev, motion]
-    );
-  };
 
   const shotTypeOptions = [
-    'Extreme Wide Shot',
-    'Wide Shot',
-    'Medium Shot',
-    'Close-up',
-    'Extreme Close-up',
-    'Low Angle',
-    'High Angle',
-    'Bird\'s Eye View',
-    'Worm\'s Eye View',
-    'Over-the-Shoulder',
-    'Point of View (POV)'
+    'Extreme Wide Shot', 'Wide Shot', 'Medium Shot', 'Close-up', 'Extreme Close-up', 'Low Angle', 'High Angle', 'Bird\'s Eye View', 'Worm\'s Eye View', 'Over-the-Shoulder', 'Point of View (POV)'
   ];
 
-  const toggleShotType = (shot: string) => {
-    setSelectedShotTypes(prev => 
-      prev.includes(shot) 
-        ? prev.filter(s => s !== shot) 
-        : [...prev, shot]
+  if (!activeWorkspaceId) {
+    return (
+      <div className="flex flex-col h-screen bg-[#0F172A] text-slate-200 font-sans">
+        <Toaster 
+          theme="dark" 
+          position="bottom-right" 
+          toastOptions={{
+            style: { background: '#1E293B', border: '1px solid #334155', color: '#E2E8F0' },
+          }}
+          richColors
+        />
+        <header className="flex items-center justify-between px-8 py-6 bg-[#1B253B] border-b border-slate-700/50">
+          <div className="flex items-center gap-4">
+            <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/20">
+              <Sparkles className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight text-white leading-tight">AI Video Workflow</h1>
+              <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Studio Hub v2.0</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-4">
+            <span className="text-xs text-slate-500 italic">Connected to Gemini Flash 3</span>
+          </div>
+        </header>
+
+        <WorkspaceDashboard 
+          workspaces={workspaces}
+          onCreate={handleCreateWorkspace}
+          onDelete={handleDeleteWorkspace}
+          onUpdate={handleUpdateWorkspace}
+          onSelect={(ws) => setActiveWorkspaceId(ws.id)}
+        />
+      </div>
     );
-  };
+  }
+
+  const { script, style, negativePrompt, customApiKey, secondsPerScene, wordsPerSecond, multiview, strictImage, promptInstructions, promptMode, engine, selectedMotions, selectedShotTypes, scenes } = activeWorkspace.data;
 
   return (
     <div className="flex flex-col h-screen bg-[#0F172A] text-slate-200 font-sans overflow-hidden">
+      <Toaster 
+        theme="dark" 
+        position="bottom-right" 
+        toastOptions={{
+          style: { background: '#1E293B', border: '1px solid #334155', color: '#E2E8F0' },
+          className: 'font-sans'
+        }}
+        expand={false}
+        richColors
+      />
       {/* Header Navigation */}
       <header className="flex items-center justify-between px-6 py-4 bg-[#1E293B] border-b border-slate-700/50">
         <div className="flex items-center gap-3">
+          <button 
+            onClick={() => setActiveWorkspaceId(null)}
+            className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-all mr-1"
+          >
+            <ChevronLeft className="w-5 h-5" />
+          </button>
           <div className="w-8 h-8 bg-indigo-500 rounded-lg flex items-center justify-center">
             <Sparkles className="w-5 h-5 text-white" />
           </div>
-          <h1 className="text-xl font-bold tracking-tight text-white flex items-center">
-            AI Video Workflow 
-            <span className="text-[10px] font-normal text-slate-400 bg-slate-800 px-2 py-0.5 rounded-full ml-3 tracking-widest uppercase">Batch Workflow v2.0</span>
-          </h1>
+          <div className="flex flex-col">
+            <h1 className="text-sm font-bold tracking-tight text-white flex items-center gap-2">
+              {activeWorkspace.name}
+              <span className="text-[8px] font-normal text-slate-500 bg-slate-900 border border-slate-800 px-2 py-0.5 rounded-full tracking-widest uppercase">Batch Workflow v2.0</span>
+            </h1>
+            <p className="text-[10px] text-slate-500 font-medium">Video Synthesis Engine</p>
+          </div>
         </div>
         <div className="flex items-center gap-4">
           <button 
@@ -189,11 +325,10 @@ export default function App() {
                 placeholder="Optional Custom Key..." 
                 className="bg-transparent text-xs text-indigo-400 outline-none w-32 placeholder:text-slate-600 focus:w-48 transition-all"
                 value={customApiKey}
-                onChange={(e) => setCustomApiKey(e.target.value)}
+                onChange={(e) => updateActiveWorkspace({ customApiKey: e.target.value })}
               />
             </div>
             <button className="px-3 py-1.5 text-xs font-medium bg-indigo-600 text-white rounded shadow-sm">100+ Batch</button>
-            <button className="px-3 py-1.5 text-xs font-medium text-slate-400 opacity-50 cursor-not-allowed">Direct Edit</button>
           </div>
           <button 
             onClick={handleGenerate}
@@ -227,7 +362,7 @@ export default function App() {
                   className="w-full bg-[#0F172A] border border-slate-700 rounded-lg p-2 text-[11px] text-slate-200 h-20 resize-none transition-all focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20 outline-none placeholder:opacity-30 custom-scrollbar" 
                   placeholder="Paste script..."
                   value={script}
-                  onChange={(e) => setScript(e.target.value)}
+                  onChange={(e) => updateActiveWorkspace({ script: e.target.value })}
                   id="script-input"
                 />
               </div>
@@ -237,7 +372,7 @@ export default function App() {
                   className="w-full bg-[#0F172A] border border-slate-700 rounded-lg p-2 text-[11px] text-indigo-300 h-20 resize-none transition-all focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20 outline-none placeholder:opacity-30 custom-scrollbar" 
                   placeholder="Visual style..."
                   value={style}
-                  onChange={(e) => setStyle(e.target.value)}
+                  onChange={(e) => updateActiveWorkspace({ style: e.target.value })}
                   id="style-input"
                 />
               </div>
@@ -247,7 +382,7 @@ export default function App() {
                   className="w-full bg-[#0F172A] border border-slate-700 rounded-lg p-2 text-[11px] text-red-300/60 h-20 resize-none transition-all focus:border-red-500/30 focus:ring-1 focus:ring-red-500/10 outline-none placeholder:opacity-30 custom-scrollbar" 
                   placeholder="Exclusions..."
                   value={negativePrompt}
-                  onChange={(e) => setNegativePrompt(e.target.value)}
+                  onChange={(e) => updateActiveWorkspace({ negativePrompt: e.target.value })}
                   id="negative-input"
                 />
               </div>
@@ -255,7 +390,7 @@ export default function App() {
                 <label className="block text-[9px] uppercase font-bold text-slate-500 mb-1.5 tracking-wider">04. Instructions</label>
                 <textarea 
                   value={promptInstructions}
-                  onChange={(e) => setPromptInstructions(e.target.value)}
+                  onChange={(e) => updateActiveWorkspace({ promptInstructions: e.target.value })}
                   placeholder="Custom prompts rules..."
                   className="w-full bg-[#0F172A] border border-slate-700 rounded-lg p-2 text-[11px] text-slate-300 h-20 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 outline-none resize-none custom-scrollbar placeholder:text-slate-700"
                 />
@@ -266,7 +401,7 @@ export default function App() {
                   {['General Image Prompt', 'Structured Prompt', 'Graphic Design', 'JSON'].map((mode) => (
                     <button
                       key={mode}
-                      onClick={() => setPromptMode(mode)}
+                      onClick={() => updateActiveWorkspace({ promptMode: mode })}
                       className={`text-left px-2 py-1 rounded text-[10px] transition-all border ${
                         promptMode === mode 
                           ? 'bg-indigo-500/20 border-indigo-500 text-indigo-400 font-bold' 
@@ -284,7 +419,7 @@ export default function App() {
                   {['Flux', 'Midjourney', 'Stable Diffusion', 'Gemini'].map((eng) => (
                     <button
                       key={eng}
-                      onClick={() => setEngine(eng)}
+                      onClick={() => updateActiveWorkspace({ engine: eng })}
                       className={`text-center py-1 rounded text-[10px] transition-all border ${
                         engine === eng 
                           ? 'bg-indigo-500/20 border-indigo-500 text-indigo-400 font-bold' 
@@ -302,7 +437,7 @@ export default function App() {
                   <select 
                     className="w-full bg-[#0F172A] border border-slate-700 rounded-lg p-2 text-[11px] text-slate-300 outline-none appearance-none cursor-pointer focus:border-indigo-500 transition-colors"
                     value={secondsPerScene}
-                    onChange={(e) => setSecondsPerScene(Number(e.target.value))}
+                    onChange={(e) => updateActiveWorkspace({ secondsPerScene: Number(e.target.value) })}
                     id="duration-input"
                   >
                     <option value="3">3.0s</option>
@@ -324,13 +459,13 @@ export default function App() {
                       max="10"
                       className="w-10 bg-[#0F172A] border border-slate-700/50 rounded px-1 py-0.5 text-[10px] text-indigo-400 outline-none focus:border-indigo-500 transition-all font-mono"
                       value={wordsPerSecond}
-                      onChange={(e) => setWordsPerSecond(Number(e.target.value))}
+                      onChange={(e) => updateActiveWorkspace({ wordsPerSecond: Number(e.target.value) })}
                     />
                     <span className="text-[8px] text-slate-500 font-mono">w/s</span>
                   </div>
                   <div className="flex flex-col gap-1.5">
                     <button 
-                      onClick={() => setStrictImage(!strictImage)}
+                      onClick={() => updateActiveWorkspace({ strictImage: !strictImage })}
                       className={`flex items-center justify-center gap-1.5 px-2 py-1 rounded border transition-all ${strictImage ? 'bg-yellow-500/20 border-yellow-500 text-yellow-400' : 'bg-slate-800 border-slate-700 text-slate-600'}`}
                       id="strict-toggle"
                     >
@@ -338,7 +473,7 @@ export default function App() {
                       <span className="text-[8px] font-bold uppercase tracking-wider">Strict</span>
                     </button>
                     <button 
-                      onClick={() => setMultiview(!multiview)}
+                      onClick={() => updateActiveWorkspace({ multiview: !multiview })}
                       className={`flex items-center justify-center gap-1.5 px-2 py-1 rounded border transition-all ${multiview ? 'bg-indigo-500/20 border-indigo-500 text-indigo-400' : 'bg-slate-800 border-slate-700 text-slate-600'}`}
                       id="multiview-toggle"
                     >
@@ -358,7 +493,12 @@ export default function App() {
                           type="checkbox" 
                           className="accent-indigo-500 w-2.5 h-2.5 rounded border-slate-600 bg-slate-900"
                           checked={selectedShotTypes.includes(opt)}
-                          onChange={() => toggleShotType(opt)}
+                          onChange={() => {
+                            const next = selectedShotTypes.includes(opt) 
+                              ? selectedShotTypes.filter(s => s !== opt) 
+                              : [...selectedShotTypes, opt];
+                            updateActiveWorkspace({ selectedShotTypes: next });
+                          }}
                         />
                         <span className={`text-[9px] leading-tight ${selectedShotTypes.includes(opt) ? 'text-indigo-400' : 'text-slate-500'}`}>{opt}</span>
                       </label>
@@ -376,7 +516,12 @@ export default function App() {
                           type="checkbox" 
                           className="accent-indigo-500 w-2.5 h-2.5 rounded border-slate-600 bg-slate-900"
                           checked={selectedMotions.includes(opt)}
-                          onChange={() => toggleMotion(opt)}
+                          onChange={() => {
+                            const next = selectedMotions.includes(opt) 
+                              ? selectedMotions.filter(m => m !== opt) 
+                              : [...selectedMotions, opt];
+                            updateActiveWorkspace({ selectedMotions: next });
+                          }}
                         />
                         <span className={`text-[9px] leading-tight ${selectedMotions.includes(opt) ? 'text-indigo-400' : 'text-slate-500'}`}>{opt}</span>
                       </label>
@@ -393,7 +538,10 @@ export default function App() {
                 </div>
                 <div className="flex gap-1.5">
                   <button 
-                    onClick={() => { setScenes([]); setScript(''); }}
+                    onClick={() => { 
+                      updateActiveWorkspace({ scenes: [], script: '' });
+                      toast.info("Workspace cleared");
+                    }}
                     className="p-1.5 border border-slate-700 hover:border-red-500/50 hover:bg-red-500/10 text-slate-500 hover:text-red-400 transition-all rounded"
                     title="Reset All"
                   >
@@ -401,11 +549,11 @@ export default function App() {
                   </button>
                   {scenes.length > 0 && (
                     <button 
-                      onClick={exportCSV}
-                      className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-bold uppercase tracking-wider rounded transition-all"
+                      onClick={exportExcel}
+                      className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 bg-green-600 hover:bg-green-500 text-white text-[10px] font-bold uppercase tracking-wider rounded transition-all shadow-lg shadow-green-900/20"
                     >
                       <Download className="w-3 h-3" />
-                      CSV
+                      Export Excel
                     </button>
                   )}
                 </div>

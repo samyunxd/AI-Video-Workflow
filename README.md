@@ -76,4 +76,7 @@ Generated prompts and negative constraints are **merged on copy**. When you clic
 ## 🎹 Interface Navigation
 - **Maximize workspace**: Click the gear icon `⚙️` to collapse the settings bar.
 - **Safe State**: All settings, checkboxes, and the script auto-save to `localStorage`.
-- **Exporting**: Use the **Export CSV** button for bulk import into video automation tools.
+- **Exporting**: Use the **Export Excel** button for professional data handling. This generates a formatted `.xlsx` file with:
+  - **Interleaved Gaps**: Empty rows between sequences for better legibility.
+  - **Merged Prompts**: Image and Negative prompts are unified into a single, compact block (e.g., `Prompt [NEG: Negative]`) for streamlined usage.
+  - **Auto-Width**: Column widths are pre-set for a clear overview.

@@ -35,8 +35,8 @@ export async function generateBulkPrompts(
   const ai = new GoogleGenAI({ apiKey });
 
   const motionInstruction = allowedMotions.length > 0 
-    ? `MOTION CONSTRAINT: Use only these camera movements for "videoPrompt": ${allowedMotions.join(', ')}.`
-    : "Use professional cinematic camera movements.";
+    ? `VIDEO MOTION & ACTION PRIORITY: For "videoPrompt", YOU MUST describe the SUBJECT'S ACTION in high detail. Describe exactly how subjects move, blink, breathe, gesture, or interact with their surroundings. Then, combine this with ONE camera movement from this list: [${allowedMotions.join(', ')}]. If "Static Camera" is selected, the camera remains fixed, but the SUBJECT MUST be active and moving to ensure the video feels alive.`
+    : "VIDEO MOTION & ACTION PRIORITY: Describe professional cinematic subject actions and interactions inside the frame, combined with appropriate camera movements.";
 
   const shotTypeInstruction = allowedShotTypes.length > 0
     ? `CAMERA ANGLE CONSTRAINT: Start each "imagePrompt" with one of these shot types: ${allowedShotTypes.join(', ')}.`
@@ -47,12 +47,13 @@ export async function generateBulkPrompts(
     : "";
 
   const multiviewInstruction = multiview 
-    ? `ENFORCE MULTI-SHOT SEQUENCE: The "videoPrompt" MUST describe a sequence of shots within the scene duration. 
-       - Use time markers like "[0-2s]: Shot description... [2-4s]: Next shot..." 
+    ? `ENFORCE MULTI-SHOT SEQUENCE: The "videoPrompt" MUST describe a sequence of shots AND ACTIONS within the scene duration. 
+       - Use time markers like "[0-2s]: Subject starts action with fixed camera... [2-4s]: Subject transitions to new behavior..." 
+       - If camera settings allow, switch angles. If "Static Camera" is restricted, keep the angle but evolve the subject's behavior.
        - Total time markers must sum up to ${secondsPerScene} seconds.
        - Describe different angles (Wide, Medium, Close-up) within this single video prompt.
        - DO NOT apply this multi-shot logic to "imagePrompt". The "imagePrompt" MUST remain a single, high-quality starting frame.`
-    : "Standard single-view cinematic shots.";
+    : "Standard single-view cinematic shots with high-priority subject action.";
 
   const promptModeInstruction = (function() {
     switch(promptMode) {
@@ -100,9 +101,9 @@ ENGINE OPTIMIZATION: ${engineInstruction}
 
 REQUIRED FIELDS:
 - "scriptSegment": The literal text covered.
-- "imagePrompt": The descriptive list. YOU MUST APPEND THE NEGATIVE PROMPT AT THE END using: " --no ${negativePrompt}".
+- "imagePrompt": The descriptive list. YOU MUST APPEND the scene-specific negative prompt at the end using: " --no [calculated negative prompt]".
 - "videoPrompt": Motion description using ${motionInstruction}.
-- "negativePrompt": The global negative prompt (${negativePrompt}).
+- "negativePrompt": A SMART, context-aware negative prompt. USE the global input (${negativePrompt}) as a baseline, but ADD scene-specific exclusions. For example, if the scene is a quiet interior, add "street noise, bright sunlight". If it's a close-up, add "distracting background details". DO NOT just copy-paste the global prompt; make it unique to what SHOULD NOT be in this specific frame.
 
 ${shotTypeInstruction}
 ${strictInstruction}
