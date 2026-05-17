@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { Routes, Route, useNavigate, useParams, Navigate, useLocation } from 'react-router-dom';
 import { 
   Play, 
   Settings, 
@@ -74,11 +75,12 @@ enum OperationType {
 }
 
 export default function App() {
+  const navigate = useNavigate();
+  const location = useLocation();
   const { user, loading: authLoading, logout } = useAuth();
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [geminiApiKey, setGeminiApiKey] = useState('');
   const [activeWorkspaceId, setActiveWorkspaceId] = useState<string | null>(null);
-  const [showStudio, setShowStudio] = useState(false);
   const [isConfigExpanded, setIsConfigExpanded] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -188,6 +190,16 @@ export default function App() {
     }
   }, [workspaces]);
 
+  // Sync URL with activeWorkspaceId
+  useEffect(() => {
+    const pathParts = location.pathname.split('/');
+    if (pathParts[1] === 'studio' && pathParts[2]) {
+      setActiveWorkspaceId(pathParts[2]);
+    } else {
+      setActiveWorkspaceId(null);
+    }
+  }, [location.pathname]);
+
   // Sync localActiveData with activeWorkspace when switching
   useEffect(() => {
     if (activeWorkspace) {
@@ -259,7 +271,7 @@ export default function App() {
 
     try {
       await setDoc(doc(db, 'workspaces', id), newWs);
-      setActiveWorkspaceId(id);
+      navigate(`/studio/${id}`);
       toast.success(`Created "${name}"`);
     } catch (err) {
       handleFirestoreError(err, OperationType.CREATE, `workspaces/${id}`);
@@ -287,7 +299,7 @@ export default function App() {
     if (!user) return;
     try {
       await deleteDoc(doc(db, 'workspaces', id));
-      if (activeWorkspaceId === id) setActiveWorkspaceId(null);
+      if (location.pathname === `/studio/${id}`) navigate('/');
       toast.info("Workspace deleted");
     } catch (err) {
       handleFirestoreError(err, OperationType.DELETE, `workspaces/${id}`);
@@ -302,11 +314,11 @@ export default function App() {
     );
   }
 
-  if (!user || (!showStudio && !activeWorkspaceId)) {
+  if (!user) {
     return (
       <>
         <Toaster theme="dark" position="bottom-right" richColors />
-        <LandingPage onEnterStudio={() => setShowStudio(true)} />
+        <LandingPage onEnterStudio={() => navigate('/')} />
       </>
     );
   }
@@ -429,9 +441,9 @@ export default function App() {
         <header className="flex items-center justify-between px-8 py-5 bg-[#0F111A] border-b border-white/5">
           <div className="flex items-center gap-4">
             <button 
-              onClick={() => setShowStudio(false)}
+              onClick={() => navigate('/')}
               className="w-10 h-10 bg-white/5 border border-white/10 rounded-xl flex items-center justify-center hover:bg-white/10 transition-colors group p-1.5"
-              title="Back to Landing Page"
+              title="AiDirector Dashboard"
             >
               <img src={logoImg} alt="AiDirector Logo" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
             </button>
@@ -477,7 +489,7 @@ export default function App() {
           onCreate={handleCreateWorkspace}
           onDelete={handleDeleteWorkspace}
           onUpdate={handleUpdateWorkspace}
-          onSelect={(ws) => setActiveWorkspaceId(ws.id)}
+          onSelect={(ws) => navigate(`/studio/${ws.id}`)}
         />
       </div>
     );
@@ -502,8 +514,7 @@ export default function App() {
         <div className="flex items-center gap-3">
           <button 
             onClick={() => {
-              setActiveWorkspaceId(null);
-              setShowStudio(false);
+              navigate('/');
             }}
             className="p-2 hover:bg-white/5 rounded-lg text-slate-400 hover:text-white transition-all mr-1"
           >
@@ -514,7 +525,7 @@ export default function App() {
           </div>
           <div className="flex flex-col">
             <h1 className="text-sm font-bold tracking-tight text-white flex items-center gap-2">
-              {activeWorkspace.name}
+              {activeWorkspace?.name}
               <span className="text-[8px] font-normal text-slate-500 bg-white/5 border border-white/10 px-2 py-0.5 rounded-full tracking-widest uppercase">System v3.0</span>
             </h1>
             <p className="text-[10px] text-slate-500 font-medium">Video Operating System</p>
