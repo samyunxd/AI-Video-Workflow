@@ -1,10 +1,10 @@
 {
-  "projectId": "compelling-outpost-j8gvj",
-  "appId": "1:587124850864:web:182923cfa8b9801906fb75",
-  "apiKey": "AIzaSyD0QpNKii-KS1o7R_9BM2ITa2ccI0JG7Jo",
-  "authDomain": "compelling-outpost-j8gvj.firebaseapp.com",
+  "projectId": "ai-director-181ea",
+  "appId": "1:958151226103:web:a3d7a627644c5e998399f2",
+  "apiKey": "AIzaSyCYLfnXJoTwWNTIxK7E7WkVEx9IoXhTv5k",
+  "authDomain": "ai-director-181ea.firebaseapp.com",
   "firestoreDatabaseId": "ai-studio-cc18ea2c-84a4-4451-85fd-da61e3632ed3",
-  "storageBucket": "compelling-outpost-j8gvj.firebasestorage.app",
-  "messagingSenderId": "587124850864",
+  "storageBucket": "ai-director-181ea.firebasestorage.app",
+  "messagingSenderId": "958151226103",
   "measurementId": ""
 }
