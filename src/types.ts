@@ -24,5 +24,6 @@ export interface Workspace {
   themeColor?: string;
   createdAt: number;
   updatedAt: number;
+  ownerId: string;
   data: WorkspaceData;
 }

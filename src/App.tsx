@@ -17,17 +17,32 @@ import {
   Image as ImageIcon,
   Type,
   LayoutGrid,
-  Square,
   Zap,
-  Home,
-  ChevronLeft
+  ChevronLeft,
+  LogOut,
+  User as UserIcon,
+  CloudCheck
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Toaster, toast } from 'sonner';
 import * as XLSX from 'xlsx';
-import { generateBulkPrompts, ScenePrompt } from './services/gemini';
+import { 
+  collection, 
+  onSnapshot, 
+  query, 
+  where, 
+  setDoc, 
+  doc, 
+  deleteDoc, 
+  serverTimestamp,
+  orderBy
+} from 'firebase/firestore';
+import { generateBulkPrompts } from './services/gemini';
 import { Workspace, WorkspaceData } from './types';
 import WorkspaceDashboard from './components/WorkspaceDashboard';
+import LandingPage from './components/LandingPage';
+import { useAuth } from './components/FirebaseProvider';
+import { db } from './lib/firebase';
 
 const DEFAULT_DATA: WorkspaceData = {
   script: '',
@@ -47,40 +62,24 @@ const DEFAULT_DATA: WorkspaceData = {
 
 const DEFAULT_THEME_COLOR = '#6366F1';
 
-export default function App() {
-  const [workspaces, setWorkspaces] = useState<Workspace[]>(() => {
-    const saved = localStorage.getItem('v2_workspaces');
-    if (saved) return JSON.parse(saved);
-    
-    // Legacy migration or initial setup
-    const legacyWorkspace: Workspace = {
-      id: 'default',
-      name: 'Default Workspace',
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-      data: {
-        script: localStorage.getItem('cb_script') || '',
-        style: localStorage.getItem('cb_style') || DEFAULT_DATA.style,
-        negativePrompt: localStorage.getItem('cb_neg') || DEFAULT_DATA.negativePrompt,
-        secondsPerScene: Number(localStorage.getItem('cb_sec')) || 5,
-        wordsPerSecond: Number(localStorage.getItem('cb_wps')) || 2,
-        multiview: localStorage.getItem('cb_mv') === 'true',
-        strictImage: localStorage.getItem('cb_strict') === 'true',
-        promptInstructions: localStorage.getItem('cb_pi') || '',
-        promptMode: localStorage.getItem('cb_pm') || 'Structured Prompt',
-        engine: localStorage.getItem('cb_eng') || 'Gemini',
-        selectedMotions: JSON.parse(localStorage.getItem('cb_motions') || 'null') || DEFAULT_DATA.selectedMotions,
-        selectedShotTypes: JSON.parse(localStorage.getItem('cb_shots') || 'null') || DEFAULT_DATA.selectedShotTypes,
-        scenes: JSON.parse(localStorage.getItem('cb_scenes') || 'null') || []
-      }
-    };
-    return [legacyWorkspace];
-  });
+enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
 
-  const [geminiApiKey, setGeminiApiKey] = useState(() => localStorage.getItem('global_gemini_key') || '');
+export default function App() {
+  const { user, loading: authLoading, logout } = useAuth();
+  const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
+  const [geminiApiKey, setGeminiApiKey] = useState('');
   const [activeWorkspaceId, setActiveWorkspaceId] = useState<string | null>(null);
+  const [showStudio, setShowStudio] = useState(false);
   const [isConfigExpanded, setIsConfigExpanded] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const activeWorkspace = useMemo(() => 
@@ -88,30 +87,93 @@ export default function App() {
     [workspaces, activeWorkspaceId]
   );
 
-  // Persistence
-  useEffect(() => {
-    localStorage.setItem('v2_workspaces', JSON.stringify(workspaces));
-  }, [workspaces]);
-
-  useEffect(() => {
-    localStorage.setItem('global_gemini_key', geminiApiKey);
-  }, [geminiApiKey]);
-
-  const updateActiveWorkspace = (updates: Partial<WorkspaceData>) => {
-    if (!activeWorkspaceId) return;
-    setWorkspaces(prev => prev.map(ws => {
-      if (ws.id === activeWorkspaceId) {
-        return {
-          ...ws,
-          updatedAt: Date.now(),
-          data: { ...ws.data, ...updates }
-        };
-      }
-      return ws;
-    }));
+  const handleFirestoreError = (error: unknown, operationType: OperationType, path: string | null) => {
+    const errInfo = {
+      error: error instanceof Error ? error.message : String(error),
+      authInfo: {
+        userId: user?.uid,
+        email: user?.email,
+        emailVerified: user?.emailVerified,
+      },
+      operationType,
+      path
+    };
+    console.error('Firestore Error: ', JSON.stringify(errInfo));
+    toast.error(`Sync error: ${operationType}`);
   };
 
-  const handleCreateWorkspace = (name: string, description: string, logo?: string, themeColor?: string) => {
+  // Firestore Subscription for User Settings
+  useEffect(() => {
+    if (!user) return;
+
+    const unsubscribe = onSnapshot(doc(db, 'users', user.uid), (snapshot) => {
+      if (snapshot.exists()) {
+        const userData = snapshot.data();
+        if (userData.geminiApiKey) setGeminiApiKey(userData.geminiApiKey);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [user]);
+
+  const updateApiKey = async (newKey: string) => {
+    setGeminiApiKey(newKey);
+    if (!user) return;
+    try {
+      await setDoc(doc(db, 'users', user.uid), { 
+        geminiApiKey: newKey,
+        uid: user.uid,
+        email: user.email,
+        displayName: user.displayName,
+        updatedAt: Date.now()
+      }, { merge: true });
+    } catch (err) {
+      handleFirestoreError(err, OperationType.UPDATE, `users/${user.uid}`);
+    }
+  };
+
+  // Firestore Subscription for Workspaces
+  useEffect(() => {
+    if (!user) {
+      setWorkspaces([]);
+      return;
+    }
+
+    setIsSyncing(true);
+    const q = query(
+      collection(db, 'workspaces'), 
+      where('ownerId', '==', user.uid),
+      orderBy('updatedAt', 'desc')
+    );
+    
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const wsData = snapshot.docs.map(doc => doc.data() as Workspace);
+      setWorkspaces(wsData);
+      setIsSyncing(false);
+    }, (err) => {
+      handleFirestoreError(err, OperationType.LIST, 'workspaces');
+    });
+
+    return () => unsubscribe();
+  }, [user]);
+
+  const updateActiveWorkspace = async (updates: Partial<WorkspaceData>) => {
+    if (!activeWorkspaceId || !user || !activeWorkspace) return;
+    
+    const wsRef = doc(db, 'workspaces', activeWorkspaceId);
+    try {
+      await setDoc(wsRef, {
+        ...activeWorkspace,
+        updatedAt: Date.now(),
+        data: { ...activeWorkspace.data, ...updates }
+      }, { merge: true });
+    } catch (err) {
+      handleFirestoreError(err, OperationType.UPDATE, `workspaces/${activeWorkspaceId}`);
+    }
+  };
+
+  const handleCreateWorkspace = async (name: string, description: string, logo?: string, themeColor?: string) => {
+    if (!user) return;
     const id = crypto.randomUUID();
     const newWs: Workspace = {
       id,
@@ -121,25 +183,63 @@ export default function App() {
       themeColor: themeColor || DEFAULT_THEME_COLOR,
       createdAt: Date.now(),
       updatedAt: Date.now(),
+      ownerId: user.uid,
       data: { ...DEFAULT_DATA }
     };
-    setWorkspaces([newWs, ...workspaces]);
-    setActiveWorkspaceId(id);
-    toast.success(`Created "${name}"`);
+
+    try {
+      await setDoc(doc(db, 'workspaces', id), newWs);
+      setActiveWorkspaceId(id);
+      toast.success(`Created "${name}"`);
+    } catch (err) {
+      handleFirestoreError(err, OperationType.CREATE, `workspaces/${id}`);
+    }
   };
 
-  const handleUpdateWorkspace = (id: string, name: string, description: string, logo?: string, themeColor?: string) => {
-    setWorkspaces(prev => prev.map(ws => 
-      ws.id === id ? { ...ws, name, description, logo, themeColor, updatedAt: Date.now() } : ws
-    ));
-    toast.success("Workspace updated");
+  const handleUpdateWorkspace = async (id: string, name: string, description: string, logo?: string, themeColor?: string) => {
+    if (!user) return;
+    const wsRef = doc(db, 'workspaces', id);
+    try {
+      await setDoc(wsRef, { 
+        name, 
+        description, 
+        logo, 
+        themeColor, 
+        updatedAt: Date.now() 
+      }, { merge: true });
+      toast.success("Workspace updated");
+    } catch (err) {
+      handleFirestoreError(err, OperationType.UPDATE, `workspaces/${id}`);
+    }
   };
 
-  const handleDeleteWorkspace = (id: string) => {
-    setWorkspaces(prev => prev.filter(w => w.id !== id));
-    if (activeWorkspaceId === id) setActiveWorkspaceId(null);
-    toast.info("Workspace deleted");
+  const handleDeleteWorkspace = async (id: string) => {
+    if (!user) return;
+    try {
+      await deleteDoc(doc(db, 'workspaces', id));
+      if (activeWorkspaceId === id) setActiveWorkspaceId(null);
+      toast.info("Workspace deleted");
+    } catch (err) {
+      handleFirestoreError(err, OperationType.DELETE, `workspaces/${id}`);
+    }
   };
+
+  if (authLoading) {
+    return (
+      <div className="h-screen bg-[#050505] flex items-center justify-center">
+        <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
+      </div>
+    );
+  }
+
+  if (!user || (!showStudio && !activeWorkspaceId)) {
+    return (
+      <>
+        <Toaster theme="dark" position="bottom-right" richColors />
+        <LandingPage onEnterStudio={() => setShowStudio(true)} />
+      </>
+    );
+  }
 
   const handleGenerate = async () => {
     if (!activeWorkspace) return;
@@ -258,9 +358,13 @@ export default function App() {
         />
         <header className="flex items-center justify-between px-8 py-6 bg-[#1B253B] border-b border-slate-700/50">
           <div className="flex items-center gap-4">
-            <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/20">
-              <Sparkles className="w-6 h-6 text-white" />
-            </div>
+            <button 
+              onClick={() => setShowStudio(false)}
+              className="w-10 h-10 bg-slate-800 border border-slate-700 rounded-xl flex items-center justify-center hover:bg-slate-700 transition-colors group"
+              title="Back to Landing Page"
+            >
+              <Sparkles className="w-6 h-6 text-indigo-400 group-hover:scale-110 transition-transform" />
+            </button>
             <div>
               <h1 className="text-2xl font-bold tracking-tight text-white leading-tight">AI Video Workflow</h1>
               <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Studio Hub v2.0</p>
@@ -275,13 +379,23 @@ export default function App() {
                   placeholder="Enter API Key..."
                   className="bg-transparent text-xs text-indigo-400 outline-none w-48 placeholder:text-slate-700 font-mono"
                   value={geminiApiKey}
-                  onChange={(e) => setGeminiApiKey(e.target.value)}
+                  onChange={(e) => updateApiKey(e.target.value)}
                 />
               </div>
             </div>
-            <div className="flex flex-col items-end">
-              <span className="text-xs text-slate-400 font-medium">Gemini Flash 3</span>
-              <span className="text-[10px] text-green-500 font-bold uppercase tracking-tighter">Connection Active</span>
+            
+            <div className="flex items-center gap-3 pl-4 border-l border-slate-700/50">
+              <div className="flex flex-col items-end hidden lg:flex">
+                <span className="text-xs text-white font-bold tracking-tight">{user.displayName || 'Creator'}</span>
+                <span className="text-[10px] text-slate-500 font-medium">Pro Member</span>
+              </div>
+              <button 
+                onClick={logout}
+                className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 hover:border-red-500/50 hover:bg-red-500/10 text-slate-400 hover:text-red-400 transition-all flex items-center justify-center group"
+                title="Sign Out"
+              >
+                <LogOut className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              </button>
             </div>
           </div>
         </header>
@@ -289,7 +403,7 @@ export default function App() {
         <WorkspaceDashboard 
           workspaces={workspaces}
           apiKey={geminiApiKey}
-          onApiKeyChange={setGeminiApiKey}
+          onApiKeyChange={updateApiKey}
           onCreate={handleCreateWorkspace}
           onDelete={handleDeleteWorkspace}
           onUpdate={handleUpdateWorkspace}
@@ -317,7 +431,10 @@ export default function App() {
       <header className="flex items-center justify-between px-6 py-4 bg-[#1E293B] border-b border-slate-700/50">
         <div className="flex items-center gap-3">
           <button 
-            onClick={() => setActiveWorkspaceId(null)}
+            onClick={() => {
+              setActiveWorkspaceId(null);
+              setShowStudio(false);
+            }}
             className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-all mr-1"
           >
             <ChevronLeft className="w-5 h-5" />
@@ -342,10 +459,16 @@ export default function App() {
                 placeholder="Key..."
                 className="bg-transparent text-[11px] text-indigo-400 outline-none w-32 placeholder:text-slate-800 font-mono"
                 value={geminiApiKey}
-                onChange={(e) => setGeminiApiKey(e.target.value)}
+                onChange={(e) => updateApiKey(e.target.value)}
               />
             </div>
           </div>
+          
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-900/50 border border-slate-800 rounded-lg">
+             <CloudCheck className={`w-3.5 h-3.5 ${isSyncing ? 'text-indigo-500 animate-pulse' : 'text-emerald-500'}`} />
+             <span className="text-[10px] font-mono text-slate-500 uppercase tracking-tighter">Cloud Sync</span>
+          </div>
+
           <button 
             onClick={() => setIsConfigExpanded(!isConfigExpanded)}
             className={`p-2 rounded border transition-all ${isConfigExpanded ? 'bg-slate-800 border-slate-700 text-indigo-400' : 'bg-indigo-600 border-indigo-500 text-white'}`}

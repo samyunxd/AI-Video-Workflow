@@ -1,0 +1,68 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Default Deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Helpers ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // --- User Profiles ---
+    match /users/{userId} {
+      allow get: if isSignedIn();
+      allow create, update: if isOwner(userId) && 
+        incoming().uid == userId &&
+        incoming().email is string &&
+        incoming().email.size() <= 256;
+    }
+
+    // --- Workspaces ---
+    function isValidWorkspace(data) {
+      return data.id is string && data.id.size() <= 128 &&
+             data.name is string && data.name.size() <= 256 &&
+             data.ownerId == request.auth.uid &&
+             data.createdAt is number &&
+             data.updatedAt is number;
+    }
+
+    match /workspaces/{workspaceId} {
+      allow get: if isOwner(existing().ownerId);
+      allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      
+      allow create: if isSignedIn() && 
+        isValidId(workspaceId) && 
+        isValidWorkspace(incoming()) &&
+        incoming().createdAt == request.time.toMillis() &&
+        incoming().updatedAt == request.time.toMillis();
+        
+      allow update: if isOwner(existing().ownerId) &&
+        isValidWorkspace(incoming()) &&
+        incoming().id == existing().id &&
+        incoming().ownerId == existing().ownerId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time.toMillis();
+        
+      allow delete: if isOwner(existing().ownerId);
+    }
+  }
+}

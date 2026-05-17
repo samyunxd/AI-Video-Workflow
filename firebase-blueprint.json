@@ -1,0 +1,43 @@
+{
+  "entities": {
+    "workspace": {
+      "title": "Workspace",
+      "description": "A creative workspace containing scripts and generated scenes",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "logo": { "type": "string" },
+        "themeColor": { "type": "string" },
+        "createdAt": { "type": "number" },
+        "updatedAt": { "type": "number" },
+        "ownerId": { "type": "string" },
+        "data": { "type": "object" }
+      },
+      "required": ["id", "name", "ownerId", "data"]
+    },
+    "user": {
+      "title": "User",
+      "description": "User profile information",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" }
+      },
+      "required": ["uid", "email"]
+    }
+  },
+  "firestore": {
+    "/workspaces/{workspaceId}": {
+      "schema": "workspace",
+      "description": "Main collection of workspaces"
+    },
+    "/users/{userId}": {
+      "schema": "user",
+      "description": "User profiles"
+    }
+  }
+}
