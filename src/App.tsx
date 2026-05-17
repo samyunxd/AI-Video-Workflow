@@ -173,11 +173,13 @@ export default function App() {
     );
     
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const wsData = snapshot.docs.map(doc => doc.data() as Workspace);
+      const wsData = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Workspace));
+      console.log(`Firestore Sync: Received ${wsData.length} workspaces`);
       setWorkspaces(wsData);
       setIsSyncing(false);
     }, (err) => {
       handleFirestoreError(err, OperationType.LIST, 'workspaces');
+      setIsSyncing(false);
     });
 
     return () => unsubscribe();
@@ -187,6 +189,7 @@ export default function App() {
   useEffect(() => {
     if (workspaces.length > 0) {
       localStorage.setItem('aidirector_workspaces_cache', JSON.stringify(workspaces));
+      console.log('Local Storage: Cached workspaces');
     }
   }, [workspaces]);
 
@@ -204,10 +207,11 @@ export default function App() {
   useEffect(() => {
     if (activeWorkspace) {
       setLocalActiveData(activeWorkspace.data);
+      console.log(`Active Workspace: ${activeWorkspace.id}`);
     } else {
       setLocalActiveData(null);
     }
-  }, [activeWorkspaceId]);
+  }, [activeWorkspaceId, workspaces.length === 0]);
 
   const workspacesRef = useRef(workspaces);
   useEffect(() => { workspacesRef.current = workspaces; }, [workspaces]);
@@ -228,6 +232,7 @@ export default function App() {
         updatedAt: Date.now(),
         data
       }, { merge: true });
+      console.log(`Cloud Saved: ${wsId}`);
     } catch (err) {
       handleFirestoreError(err, OperationType.UPDATE, `workspaces/${wsId}`);
     } finally {

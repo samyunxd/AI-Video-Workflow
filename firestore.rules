@@ -46,23 +46,19 @@ service cloud.firestore {
     }
 
     match /workspaces/{workspaceId} {
-      allow get: if isOwner(existing().ownerId);
-      allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow get, list: if isSignedIn() && (resource == null || resource.data.ownerId == request.auth.uid);
       
       allow create: if isSignedIn() && 
         isValidId(workspaceId) && 
-        isValidWorkspace(incoming()) &&
-        incoming().createdAt == request.time.toMillis() &&
-        incoming().updatedAt == request.time.toMillis();
+        isValidWorkspace(incoming());
         
-      allow update: if isOwner(existing().ownerId) &&
+      allow update: if isSignedIn() && 
+        existing().ownerId == request.auth.uid &&
         isValidWorkspace(incoming()) &&
         incoming().id == existing().id &&
-        incoming().ownerId == existing().ownerId &&
-        incoming().createdAt == existing().createdAt &&
-        incoming().updatedAt == request.time.toMillis();
+        incoming().ownerId == existing().ownerId;
         
-      allow delete: if isOwner(existing().ownerId);
+      allow delete: if isSignedIn() && existing().ownerId == request.auth.uid;
     }
   }
 }
