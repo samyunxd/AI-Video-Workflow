@@ -26,6 +26,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { Toaster, toast } from 'sonner';
 import * as XLSX from 'xlsx';
+import { debounce } from 'lodash';
 import { 
   collection, 
   onSnapshot, 
@@ -43,6 +44,7 @@ import WorkspaceDashboard from './components/WorkspaceDashboard';
 import LandingPage from './components/LandingPage';
 import { useAuth } from './components/FirebaseProvider';
 import { db } from './lib/firebase';
+import logoImg from './assets/images/aidirector_logo_1779010645596.png';
 
 const DEFAULT_DATA: WorkspaceData = {
   script: '',
@@ -81,6 +83,9 @@ export default function App() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Local state for snappy UI updates before sync
+  const [localActiveData, setLocalActiveData] = useState<WorkspaceData | null>(null);
 
   const activeWorkspace = useMemo(() => 
     workspaces.find(w => w.id === activeWorkspaceId), 
@@ -109,7 +114,10 @@ export default function App() {
     const unsubscribe = onSnapshot(doc(db, 'users', user.uid), (snapshot) => {
       if (snapshot.exists()) {
         const userData = snapshot.data();
-        if (userData.geminiApiKey) setGeminiApiKey(userData.geminiApiKey);
+        if (userData.geminiApiKey) {
+          setGeminiApiKey(userData.geminiApiKey);
+          localStorage.setItem('aidirector_api_key', userData.geminiApiKey);
+        }
       }
     });
 
@@ -118,6 +126,7 @@ export default function App() {
 
   const updateApiKey = async (newKey: string) => {
     setGeminiApiKey(newKey);
+    localStorage.setItem('aidirector_api_key', newKey);
     if (!user) return;
     try {
       await setDoc(doc(db, 'users', user.uid), { 
@@ -131,6 +140,21 @@ export default function App() {
       handleFirestoreError(err, OperationType.UPDATE, `users/${user.uid}`);
     }
   };
+
+  // Load data from cache on initial mount
+  useEffect(() => {
+    const cachedKey = localStorage.getItem('aidirector_api_key');
+    if (cachedKey) setGeminiApiKey(cachedKey);
+
+    const cacheWorkspaces = localStorage.getItem('aidirector_workspaces_cache');
+    if (cacheWorkspaces) {
+      try {
+        setWorkspaces(JSON.parse(cacheWorkspaces));
+      } catch (e) {
+        console.error("Failed to parse cache", e);
+      }
+    }
+  }, []);
 
   // Firestore Subscription for Workspaces
   useEffect(() => {
@@ -157,19 +181,65 @@ export default function App() {
     return () => unsubscribe();
   }, [user]);
 
-  const updateActiveWorkspace = async (updates: Partial<WorkspaceData>) => {
-    if (!activeWorkspaceId || !user || !activeWorkspace) return;
+  // Handle Sync to Local Storage
+  useEffect(() => {
+    if (workspaces.length > 0) {
+      localStorage.setItem('aidirector_workspaces_cache', JSON.stringify(workspaces));
+    }
+  }, [workspaces]);
+
+  // Sync localActiveData with activeWorkspace when switching
+  useEffect(() => {
+    if (activeWorkspace) {
+      setLocalActiveData(activeWorkspace.data);
+    } else {
+      setLocalActiveData(null);
+    }
+  }, [activeWorkspaceId]);
+
+  const workspacesRef = useRef(workspaces);
+  useEffect(() => { workspacesRef.current = workspaces; }, [workspaces]);
+
+  // Firestore update function
+  const pushToFirestore = async (wsId: string, data: WorkspaceData) => {
+    if (!user) return;
+    setIsSyncing(true);
+    const wsRef = doc(db, 'workspaces', wsId);
     
-    const wsRef = doc(db, 'workspaces', activeWorkspaceId);
+    // Find the current workspace to preserve other metadata from the ref
+    const currentWs = workspacesRef.current.find(w => w.id === wsId);
+    if (!currentWs) return;
+
     try {
       await setDoc(wsRef, {
-        ...activeWorkspace,
+        ...currentWs,
         updatedAt: Date.now(),
-        data: { ...activeWorkspace.data, ...updates }
+        data
       }, { merge: true });
     } catch (err) {
-      handleFirestoreError(err, OperationType.UPDATE, `workspaces/${activeWorkspaceId}`);
+      handleFirestoreError(err, OperationType.UPDATE, `workspaces/${wsId}`);
+    } finally {
+      setIsSyncing(false);
     }
+  };
+
+  // Debounced version of pushToFirestore - Stable across renders
+  const debouncedPush = useMemo(
+    () => debounce((wsId: string, data: WorkspaceData) => pushToFirestore(wsId, data), 1000),
+    [user?.uid] // Only recreate if user changes
+  );
+
+  const updateActiveWorkspace = (updates: Partial<WorkspaceData>) => {
+    if (!activeWorkspaceId || !localActiveData) return;
+    
+    const newData = { ...localActiveData, ...updates };
+    setLocalActiveData(newData);
+    
+    // Sync to Firestore (debounced)
+    debouncedPush(activeWorkspaceId, newData);
+    
+    // Update local workspaces list immediately for other components (optimistic)
+    setWorkspaces(prev => prev.map(w => w.id === activeWorkspaceId ? { ...w, data: newData, updatedAt: Date.now() } : w));
   };
 
   const handleCreateWorkspace = async (name: string, description: string, logo?: string, themeColor?: string) => {
@@ -226,7 +296,7 @@ export default function App() {
 
   if (authLoading) {
     return (
-      <div className="h-screen bg-[#050505] flex items-center justify-center">
+      <div className="h-screen bg-[#0A0D14] flex items-center justify-center">
         <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
       </div>
     );
@@ -327,8 +397,8 @@ export default function App() {
       worksheet['!cols'] = wscols;
 
       const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, "Video Workflow");
-      XLSX.writeFile(workbook, `AI_Video_Workflow_${activeWorkspace.name.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0,10)}.xlsx`);
+      XLSX.utils.book_append_sheet(workbook, worksheet, "AiDirector Workflow");
+      XLSX.writeFile(workbook, `AiDirector_Workflow_${activeWorkspace.name.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0,10)}.xlsx`);
       
       toast.success("Excel export complete");
     } catch (err) {
@@ -345,33 +415,33 @@ export default function App() {
     'Extreme Wide Shot', 'Wide Shot', 'Medium Shot', 'Close-up', 'Extreme Close-up', 'Low Angle', 'High Angle', 'Bird\'s Eye View', 'Worm\'s Eye View', 'Over-the-Shoulder', 'Point of View (POV)'
   ];
 
-  if (!activeWorkspaceId) {
+  if (!activeWorkspaceId || !localActiveData) {
     return (
-      <div className="flex flex-col h-screen bg-[#0F172A] text-slate-200 font-sans">
+      <div className="flex flex-col h-screen bg-[#0A0D14] text-slate-200 font-sans">
         <Toaster 
           theme="dark" 
           position="bottom-right" 
           toastOptions={{
-            style: { background: '#1E293B', border: '1px solid #334155', color: '#E2E8F0' },
+            style: { background: '#1A1F2E', border: '1px solid #2D3A4F', color: '#E2E8F0' },
           }}
           richColors
         />
-        <header className="flex items-center justify-between px-8 py-6 bg-[#1B253B] border-b border-slate-700/50">
+        <header className="flex items-center justify-between px-8 py-5 bg-[#0F111A] border-b border-white/5">
           <div className="flex items-center gap-4">
             <button 
               onClick={() => setShowStudio(false)}
-              className="w-10 h-10 bg-slate-800 border border-slate-700 rounded-xl flex items-center justify-center hover:bg-slate-700 transition-colors group"
+              className="w-10 h-10 bg-white/5 border border-white/10 rounded-xl flex items-center justify-center hover:bg-white/10 transition-colors group p-1.5"
               title="Back to Landing Page"
             >
-              <Sparkles className="w-6 h-6 text-indigo-400 group-hover:scale-110 transition-transform" />
+              <img src={logoImg} alt="AiDirector Logo" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
             </button>
             <div>
-              <h1 className="text-2xl font-bold tracking-tight text-white leading-tight">AI Video Workflow</h1>
-              <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Studio Hub v2.0</p>
+              <h1 className="text-xl font-bold tracking-tight text-white leading-tight">AiDirector</h1>
+              <p className="text-[10px] text-slate-500 uppercase tracking-[0.2em] font-bold">Studio Hub v3.0</p>
             </div>
           </div>
           <div className="flex items-center gap-4">
-            <div className="hidden md:flex items-center bg-slate-800/80 border border-slate-700/50 rounded-xl px-4 py-2 gap-3 focus-within:border-indigo-500/50 transition-all">
+            <div className="hidden md:flex items-center bg-white/5 border border-white/10 rounded-xl px-4 py-2 gap-3 focus-within:border-indigo-500/50 transition-all">
               <div className="flex flex-col">
                 <label className="text-[9px] uppercase font-bold text-slate-500 tracking-wider">Gemini API Key</label>
                 <input 
@@ -384,14 +454,14 @@ export default function App() {
               </div>
             </div>
             
-            <div className="flex items-center gap-3 pl-4 border-l border-slate-700/50">
+            <div className="flex items-center gap-3 pl-4 border-l border-white/5">
               <div className="flex flex-col items-end hidden lg:flex">
                 <span className="text-xs text-white font-bold tracking-tight">{user.displayName || 'Creator'}</span>
                 <span className="text-[10px] text-slate-500 font-medium">Pro Member</span>
               </div>
               <button 
                 onClick={logout}
-                className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 hover:border-red-500/50 hover:bg-red-500/10 text-slate-400 hover:text-red-400 transition-all flex items-center justify-center group"
+                className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 hover:border-red-500/50 hover:bg-red-500/10 text-slate-400 hover:text-red-400 transition-all flex items-center justify-center group"
                 title="Sign Out"
               >
                 <LogOut className="w-5 h-5 group-hover:scale-110 transition-transform" />
@@ -413,45 +483,45 @@ export default function App() {
     );
   }
 
-  const { script, style, negativePrompt, secondsPerScene, wordsPerSecond, multiview, strictImage, promptInstructions, promptMode, engine, selectedMotions, selectedShotTypes, scenes } = activeWorkspace.data;
+  const { script, style, negativePrompt, secondsPerScene, wordsPerSecond, multiview, strictImage, promptInstructions, promptMode, engine, selectedMotions, selectedShotTypes, scenes } = localActiveData;
 
   return (
-    <div className="flex flex-col h-screen bg-[#0F172A] text-slate-200 font-sans overflow-hidden">
+    <div className="flex flex-col h-screen bg-[#0A0D14] text-slate-200 font-sans overflow-hidden">
       <Toaster 
         theme="dark" 
         position="bottom-right" 
         toastOptions={{
-          style: { background: '#1E293B', border: '1px solid #334155', color: '#E2E8F0' },
+          style: { background: '#1A1F2E', border: '1px solid #2D3A4F', color: '#E2E8F0' },
           className: 'font-sans'
         }}
         expand={false}
         richColors
       />
       {/* Header Navigation */}
-      <header className="flex items-center justify-between px-6 py-4 bg-[#1E293B] border-b border-slate-700/50">
+      <header className="flex items-center justify-between px-6 py-4 bg-[#0F111A] border-b border-white/5">
         <div className="flex items-center gap-3">
           <button 
             onClick={() => {
               setActiveWorkspaceId(null);
               setShowStudio(false);
             }}
-            className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-all mr-1"
+            className="p-2 hover:bg-white/5 rounded-lg text-slate-400 hover:text-white transition-all mr-1"
           >
             <ChevronLeft className="w-5 h-5" />
           </button>
-          <div className="w-8 h-8 bg-indigo-500 rounded-lg flex items-center justify-center">
-            <Sparkles className="w-5 h-5 text-white" />
+          <div className="w-8 h-8 bg-white/5 border border-white/10 rounded-lg flex items-center justify-center p-1">
+            <img src={logoImg} alt="AiDirector Logo" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
           </div>
           <div className="flex flex-col">
             <h1 className="text-sm font-bold tracking-tight text-white flex items-center gap-2">
               {activeWorkspace.name}
-              <span className="text-[8px] font-normal text-slate-500 bg-slate-900 border border-slate-800 px-2 py-0.5 rounded-full tracking-widest uppercase">Batch Workflow v2.0</span>
+              <span className="text-[8px] font-normal text-slate-500 bg-white/5 border border-white/10 px-2 py-0.5 rounded-full tracking-widest uppercase">System v3.0</span>
             </h1>
-            <p className="text-[10px] text-slate-500 font-medium">Video Synthesis Engine</p>
+            <p className="text-[10px] text-slate-500 font-medium">Video Operating System</p>
           </div>
         </div>
         <div className="flex items-center gap-4">
-          <div className="hidden lg:flex items-center bg-slate-900/50 border border-slate-800 rounded-lg px-3 py-1.5 gap-3 focus-within:border-indigo-500/50 transition-all">
+          <div className="hidden lg:flex items-center bg-[#0A0D14] border border-white/5 rounded-lg px-3 py-1.5 gap-3 focus-within:border-indigo-500/50 transition-all">
             <div className="flex flex-col">
               <label className="text-[8px] uppercase font-bold text-slate-600 tracking-wider">API Key</label>
               <input 
@@ -464,14 +534,14 @@ export default function App() {
             </div>
           </div>
           
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-900/50 border border-slate-800 rounded-lg">
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-[#0A0D14] border border-white/5 rounded-lg">
              <CloudCheck className={`w-3.5 h-3.5 ${isSyncing ? 'text-indigo-500 animate-pulse' : 'text-emerald-500'}`} />
              <span className="text-[10px] font-mono text-slate-500 uppercase tracking-tighter">Cloud Sync</span>
           </div>
 
           <button 
             onClick={() => setIsConfigExpanded(!isConfigExpanded)}
-            className={`p-2 rounded border transition-all ${isConfigExpanded ? 'bg-slate-800 border-slate-700 text-indigo-400' : 'bg-indigo-600 border-indigo-500 text-white'}`}
+            className={`p-2 rounded border transition-all ${isConfigExpanded ? 'bg-white/5 border-white/10 text-indigo-400' : 'bg-indigo-600 border-indigo-500 text-white'}`}
             title={isConfigExpanded ? "Hide Settings" : "Show Settings"}
           >
             <Settings className={`w-4 h-4 ${isGenerating ? 'animate-spin' : ''}`} />
@@ -502,11 +572,11 @@ export default function App() {
             exit={{ height: 0, opacity: 0 }}
             className="overflow-hidden border-b border-slate-700/50 shrink-0"
           >
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 xl:grid-cols-10 gap-4 px-6 py-4 bg-[#1E293B]/50 items-start">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 xl:grid-cols-10 gap-4 px-6 py-4 bg-[#0F111A]/50 items-start">
               <div className="col-span-1">
                 <label className="block text-[9px] uppercase font-bold text-slate-500 mb-1.5 tracking-wider">01. Script</label>
                 <textarea 
-                  className="w-full bg-[#0F172A] border border-slate-700 rounded-lg p-2 text-[11px] text-slate-200 h-20 resize-none transition-all focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20 outline-none placeholder:opacity-30 custom-scrollbar" 
+                  className="w-full bg-[#0A0D14] border border-white/5 rounded-lg p-2 text-[11px] text-slate-200 h-20 resize-none transition-all focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20 outline-none placeholder:opacity-30 custom-scrollbar" 
                   placeholder="Paste script..."
                   value={script}
                   onChange={(e) => updateActiveWorkspace({ script: e.target.value })}
@@ -516,7 +586,7 @@ export default function App() {
               <div className="col-span-1">
                 <label className="block text-[9px] uppercase font-bold text-slate-500 mb-1.5 tracking-wider">02. Style</label>
                 <textarea 
-                  className="w-full bg-[#0F172A] border border-slate-700 rounded-lg p-2 text-[11px] text-indigo-300 h-20 resize-none transition-all focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20 outline-none placeholder:opacity-30 custom-scrollbar" 
+                  className="w-full bg-[#0A0D14] border border-white/5 rounded-lg p-2 text-[11px] text-indigo-300 h-20 resize-none transition-all focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20 outline-none placeholder:opacity-30 custom-scrollbar" 
                   placeholder="Visual style..."
                   value={style}
                   onChange={(e) => updateActiveWorkspace({ style: e.target.value })}
@@ -526,7 +596,7 @@ export default function App() {
               <div className="col-span-1">
                 <label className="block text-[9px] uppercase font-bold text-slate-500 mb-1.5 tracking-wider">03. Negative</label>
                 <textarea 
-                  className="w-full bg-[#0F172A] border border-slate-700 rounded-lg p-2 text-[11px] text-red-300/60 h-20 resize-none transition-all focus:border-red-500/30 focus:ring-1 focus:ring-red-500/10 outline-none placeholder:opacity-30 custom-scrollbar" 
+                  className="w-full bg-[#0A0D14] border border-white/5 rounded-lg p-2 text-[11px] text-red-300/60 h-20 resize-none transition-all focus:border-red-500/30 focus:ring-1 focus:ring-red-500/10 outline-none placeholder:opacity-30 custom-scrollbar" 
                   placeholder="Exclusions..."
                   value={negativePrompt}
                   onChange={(e) => updateActiveWorkspace({ negativePrompt: e.target.value })}
@@ -539,7 +609,7 @@ export default function App() {
                   value={promptInstructions}
                   onChange={(e) => updateActiveWorkspace({ promptInstructions: e.target.value })}
                   placeholder="Custom prompts rules..."
-                  className="w-full bg-[#0F172A] border border-slate-700 rounded-lg p-2 text-[11px] text-slate-300 h-20 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 outline-none resize-none custom-scrollbar placeholder:text-slate-700"
+                  className="w-full bg-[#0A0D14] border border-white/5 rounded-lg p-2 text-[11px] text-slate-300 h-20 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 outline-none resize-none custom-scrollbar placeholder:text-slate-700"
                 />
               </div>
               <div className="col-span-1">
@@ -552,7 +622,7 @@ export default function App() {
                       className={`text-left px-2 py-1 rounded text-[10px] transition-all border ${
                         promptMode === mode 
                           ? 'bg-indigo-500/20 border-indigo-500 text-indigo-400 font-bold' 
-                          : 'bg-[#0F172A] border-slate-700 text-slate-500 group-hover:text-slate-300'
+                          : 'bg-[#0A0D14] border-white/5 text-slate-500 group-hover:text-slate-300'
                       }`}
                     >
                       {mode}
@@ -570,7 +640,7 @@ export default function App() {
                       className={`text-center py-1 rounded text-[10px] transition-all border ${
                         engine === eng 
                           ? 'bg-indigo-500/20 border-indigo-500 text-indigo-400 font-bold' 
-                          : 'bg-[#0F172A] border-slate-700 text-slate-500'
+                          : 'bg-[#0A0D14] border-white/5 text-slate-500'
                       }`}
                     >
                       {eng}
@@ -582,7 +652,7 @@ export default function App() {
                 <label className="block text-[9px] uppercase font-bold text-slate-500 mb-1.5 tracking-wider">07. Dynamics</label>
                 <div className="relative group mb-2">
                   <select 
-                    className="w-full bg-[#0F172A] border border-slate-700 rounded-lg p-2 text-[11px] text-slate-300 outline-none appearance-none cursor-pointer focus:border-indigo-500 transition-colors"
+                    className="w-full bg-[#0A0D14] border border-white/5 rounded-lg p-2 text-[11px] text-slate-300 outline-none appearance-none cursor-pointer focus:border-indigo-500 transition-colors"
                     value={secondsPerScene}
                     onChange={(e) => updateActiveWorkspace({ secondsPerScene: Number(e.target.value) })}
                     id="duration-input"
@@ -604,7 +674,7 @@ export default function App() {
                       step="0.1" 
                       min="0.5" 
                       max="10"
-                      className="w-10 bg-[#0F172A] border border-slate-700/50 rounded px-1 py-0.5 text-[10px] text-indigo-400 outline-none focus:border-indigo-500 transition-all font-mono"
+                      className="w-10 bg-[#0A0D14] border border-white/5 rounded px-1 py-0.5 text-[10px] text-indigo-400 outline-none focus:border-indigo-500 transition-all font-mono"
                       value={wordsPerSecond}
                       onChange={(e) => updateActiveWorkspace({ wordsPerSecond: Number(e.target.value) })}
                     />
@@ -613,7 +683,7 @@ export default function App() {
                   <div className="flex flex-col gap-1.5">
                     <button 
                       onClick={() => updateActiveWorkspace({ strictImage: !strictImage })}
-                      className={`flex items-center justify-center gap-1.5 px-2 py-1 rounded border transition-all ${strictImage ? 'bg-yellow-500/20 border-yellow-500 text-yellow-400' : 'bg-slate-800 border-slate-700 text-slate-600'}`}
+                      className={`flex items-center justify-center gap-1.5 px-2 py-1 rounded border transition-all ${strictImage ? 'bg-yellow-500/20 border-yellow-500 text-yellow-400' : 'bg-white/5 border-white/10 text-slate-600'}`}
                       id="strict-toggle"
                     >
                       <Zap className="w-3 h-3" />
@@ -621,7 +691,7 @@ export default function App() {
                     </button>
                     <button 
                       onClick={() => updateActiveWorkspace({ multiview: !multiview })}
-                      className={`flex items-center justify-center gap-1.5 px-2 py-1 rounded border transition-all ${multiview ? 'bg-indigo-500/20 border-indigo-500 text-indigo-400' : 'bg-slate-800 border-slate-700 text-slate-600'}`}
+                      className={`flex items-center justify-center gap-1.5 px-2 py-1 rounded border transition-all ${multiview ? 'bg-indigo-500/20 border-indigo-500 text-indigo-400' : 'bg-white/5 border-white/10 text-slate-600'}`}
                       id="multiview-toggle"
                     >
                       <LayoutGrid className="w-3 h-3" />
@@ -632,13 +702,13 @@ export default function App() {
               </div>
               <div className="col-span-1">
                 <label className="block text-[9px] uppercase font-bold text-slate-500 mb-1.5 tracking-wider">08. Camera</label>
-                <div className="bg-[#0F172A] border border-slate-700 rounded-lg p-1.5 h-20 overflow-y-auto custom-scrollbar">
+                <div className="bg-[#0A0D14] border border-white/5 rounded-lg p-1.5 h-20 overflow-y-auto custom-scrollbar">
                   <div className="grid grid-cols-1 gap-0.5">
                     {shotTypeOptions.map((opt) => (
                       <label key={opt} className="flex items-center gap-1.5 px-1 py-0.5 hover:bg-slate-800 rounded cursor-pointer transition-colors group">
                         <input 
                           type="checkbox" 
-                          className="accent-indigo-500 w-2.5 h-2.5 rounded border-slate-600 bg-slate-900"
+                          className="accent-indigo-500 w-2.5 h-2.5 rounded border-slate-600 bg-[#0A0D14]"
                           checked={selectedShotTypes.includes(opt)}
                           onChange={() => {
                             const next = selectedShotTypes.includes(opt) 
@@ -655,13 +725,13 @@ export default function App() {
               </div>
               <div className="col-span-1">
                 <label className="block text-[9px] uppercase font-bold text-slate-500 mb-1.5 tracking-wider">09. Motion</label>
-                <div className="bg-[#0F172A] border border-slate-700 rounded-lg p-1.5 h-20 overflow-y-auto custom-scrollbar">
+                <div className="bg-[#0A0D14] border border-white/5 rounded-lg p-1.5 h-20 overflow-y-auto custom-scrollbar">
                   <div className="grid grid-cols-1 gap-0.5">
                     {motionOptions.map((opt) => (
                       <label key={opt} className="flex items-center gap-1.5 px-1 py-0.5 hover:bg-slate-800 rounded cursor-pointer transition-colors group">
                         <input 
                           type="checkbox" 
-                          className="accent-indigo-500 w-2.5 h-2.5 rounded border-slate-600 bg-slate-900"
+                          className="accent-indigo-500 w-2.5 h-2.5 rounded border-slate-600 bg-[#0A0D14]"
                           checked={selectedMotions.includes(opt)}
                           onChange={() => {
                             const next = selectedMotions.includes(opt) 
@@ -711,23 +781,23 @@ export default function App() {
       </AnimatePresence>
 
       {/* Main Content Area */}
-      <main className="flex-1 flex flex-col overflow-hidden bg-slate-900/20">
+      <main className="flex-1 flex flex-col overflow-hidden bg-[#0A0D14]">
         {/* Grid Headers */}
-        <div className="grid grid-cols-[100px_1fr_1.5fr_1.5fr] bg-slate-900 border-b border-slate-800 text-[10px] font-bold uppercase tracking-[0.15em] text-slate-500 sticky top-0 z-20">
+        <div className="grid grid-cols-[100px_1fr_1.5fr_1.5fr] bg-[#0F111A] border-b border-white/5 text-[10px] font-bold uppercase tracking-[0.15em] text-slate-500 sticky top-0 z-20">
           <div className="p-3 pl-8 flex items-center justify-center">ID</div>
-          <div className="p-3 pl-6 border-l border-slate-800 flex items-center gap-2">
+          <div className="p-3 pl-6 border-l border-white/5 flex items-center gap-2">
             <Type className="w-3 h-3 text-indigo-500" /> Script Segment
           </div>
-          <div className="p-3 pl-6 border-l border-slate-800 flex items-center gap-2">
+          <div className="p-3 pl-6 border-l border-white/5 flex items-center gap-2">
             <ImageIcon className="w-3 h-3 text-indigo-500" /> Starting Image [STYLE]
           </div>
-          <div className="p-3 pl-6 border-l border-slate-800 flex items-center gap-2">
+          <div className="p-3 pl-6 border-l border-white/5 flex items-center gap-2">
             <MonitorPlay className="w-3 h-3 text-indigo-500" /> Video Motion Description
           </div>
         </div>
 
         {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto bg-slate-800/10 custom-scrollbar">
+        <div className="flex-1 overflow-y-auto bg-[#0A0D14] custom-scrollbar">
           <AnimatePresence mode="popLayout">
             {scenes.length === 0 ? (
               <motion.div 
@@ -735,7 +805,7 @@ export default function App() {
                 animate={{ opacity: 1 }}
                 className="h-full flex flex-col items-center justify-center p-32 text-center"
               >
-                <div className="w-20 h-20 bg-slate-800/50 border border-slate-700/50 flex items-center justify-center rounded-3xl mb-6 relative group">
+                <div className="w-20 h-20 bg-white/5 border border-white/10 flex items-center justify-center rounded-3xl mb-6 relative group">
                   <div className="absolute inset-0 bg-indigo-500/10 rounded-3xl blur-xl group-hover:bg-indigo-500/20 transition-all"></div>
                   <Settings className="w-10 h-10 text-slate-600 animate-[spin_12s_linear_infinite] relative" />
                 </div>
@@ -751,9 +821,9 @@ export default function App() {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: idx * 0.03 }}
-                  className={`grid grid-cols-[100px_1fr_1.5fr_1.5fr] group transition-all duration-200 border-b border-slate-800/30 ${
-                    idx % 2 === 0 ? 'bg-[#111827]' : 'bg-[#0F172A]'
-                  } hover:bg-slate-800/50`}
+                  className={`grid grid-cols-[100px_1fr_1.5fr_1.5fr] group transition-all duration-200 border-b border-white/5 ${
+                    idx % 2 === 0 ? 'bg-[#0A0D14]' : 'bg-[#0F111A]'
+                  } hover:bg-white/5`}
                 >
                   <div className="p-4 flex items-center justify-center">
                     <span className="font-mono text-[11px] text-slate-500 tracking-wider group-hover:text-indigo-400 transition-colors">
@@ -761,19 +831,19 @@ export default function App() {
                     </span>
                   </div>
                   
-                  <div className="p-4 border-l border-slate-800/50 relative group/cell">
+                  <div className="p-4 border-l border-white/5 relative group/cell">
                     <div className={`border-l-2 ${idx % 3 === 0 ? 'border-indigo-500' : 'border-slate-700'} pl-4 h-full flex flex-col justify-center`}>
                       <p className="text-[12px] text-slate-300 leading-relaxed italic">{scene.scriptSegment}</p>
                     </div>
                     <button 
                       onClick={() => handleCopy(scene.scriptSegment)}
-                      className="absolute top-2 right-2 p-1 bg-slate-900 border border-slate-700 rounded opacity-0 group-hover/cell:opacity-100 transition-all hover:bg-indigo-600 hover:border-indigo-500 text-slate-400 hover:text-white shadow-xl"
+                      className="absolute top-2 right-2 p-1 bg-[#0A0D14] border border-white/10 rounded opacity-0 group-hover/cell:opacity-100 transition-all hover:bg-indigo-600 hover:border-indigo-500 text-slate-400 hover:text-white shadow-xl"
                     >
                       <Copy className="w-3 h-3" />
                     </button>
                   </div>
                   
-                  <div className="p-4 border-l border-slate-800/50 relative group/cell flex flex-col justify-center">
+                  <div className="p-4 border-l border-white/5 relative group/cell flex flex-col justify-center">
                     <p className="text-[12px] text-slate-400 leading-relaxed font-sans">
                       {scene.imagePrompt}
                       {scene.negativePrompt && (
@@ -784,20 +854,20 @@ export default function App() {
                     </p>
                     <button 
                       onClick={() => handleCopy(`${scene.imagePrompt}${scene.negativePrompt ? ` --no ${scene.negativePrompt}` : ''}`)}
-                      className="absolute top-2 right-2 p-1 bg-slate-900 border border-slate-700 rounded opacity-0 group-hover/cell:opacity-100 transition-all hover:bg-indigo-600 hover:border-indigo-500 text-slate-400 hover:text-white shadow-xl"
+                      className="absolute top-2 right-2 p-1 bg-[#0A0D14] border border-white/10 rounded opacity-0 group-hover/cell:opacity-100 transition-all hover:bg-indigo-600 hover:border-indigo-500 text-slate-400 hover:text-white shadow-xl"
                     >
                       <Copy className="w-3 h-3" />
                     </button>
                     <div className="mt-2 flex gap-2">
-                       <span className="text-[8px] bg-slate-900 text-slate-500 px-1 py-0.5 rounded border border-slate-800 uppercase tracking-tighter">IMAGE_GEN</span>
+                       <span className="text-[8px] bg-[#0A0D14] text-slate-500 px-1 py-0.5 rounded border border-white/5 uppercase tracking-tighter">IMAGE_GEN</span>
                     </div>
                   </div>
                   
-                  <div className="p-4 border-l border-slate-800/50 relative group/cell flex flex-col justify-center">
+                  <div className="p-4 border-l border-white/5 relative group/cell flex flex-col justify-center">
                     <p className="text-[12px] text-indigo-300/80 leading-relaxed font-sans">{scene.videoPrompt}</p>
                     <button 
                       onClick={() => handleCopy(scene.videoPrompt)}
-                      className="absolute top-2 right-2 p-1 bg-slate-900 border border-slate-700 rounded opacity-0 group-hover/cell:opacity-100 transition-all hover:bg-indigo-600 hover:border-indigo-500 text-slate-400 hover:text-white shadow-xl"
+                      className="absolute top-2 right-2 p-1 bg-[#0A0D14] border border-white/10 rounded opacity-0 group-hover/cell:opacity-100 transition-all hover:bg-indigo-600 hover:border-indigo-500 text-slate-400 hover:text-white shadow-xl"
                     >
                       <Copy className="w-3 h-3" />
                     </button>
@@ -816,7 +886,7 @@ export default function App() {
       </main>
 
       {/* Status Footer */}
-      <footer className="px-6 py-2.5 bg-[#1E293B] border-t border-slate-700/50 flex justify-between items-center z-30">
+      <footer className="px-6 py-2.5 bg-[#0F111A] border-t border-white/5 flex justify-between items-center z-30">
         <div className="flex items-center gap-6">
           <div className="flex items-center gap-2">
             <div className={`w-1.5 h-1.5 rounded-full ${isGenerating ? 'bg-indigo-500 animate-pulse' : 'bg-green-500'}`}></div>
@@ -824,15 +894,15 @@ export default function App() {
               System {isGenerating ? 'Active' : 'Ready'}: API Connected
             </span>
           </div>
-          <div className="h-4 w-[1px] bg-slate-700"></div>
+          <div className="h-4 w-[1px] bg-white/5"></div>
           <div className="text-[10px] text-slate-500 font-mono">
-            ENGINE: <span className="text-indigo-400">GEMINI_3_FLASH</span> // MODE: <span className="text-white">BATCH_SYNTHESIS</span>
+            ENGINE: <span className="text-indigo-400">{engine.toUpperCase()}</span> // MODE: <span className="text-white">BATCH_SYNTHESIS</span>
           </div>
         </div>
         <div className="flex items-center gap-3">
           <span className="text-[10px] text-slate-500 font-medium">Render Estimate: {scenes.length > 0 ? (scenes.length * 0.5).toFixed(1) + ' min' : '--'}</span>
-          <div className="h-2 w-2 rounded-full border border-slate-700 flex items-center justify-center overflow-hidden">
-             <div className="w-full h-full bg-slate-700 opacity-20"></div>
+          <div className="h-2 w-2 rounded-full border border-white/10 flex items-center justify-center overflow-hidden">
+             <div className="w-full h-full bg-white/5 opacity-20"></div>
           </div>
         </div>
       </footer>

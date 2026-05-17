@@ -28,3 +28,19 @@
   scrollbar-width: thin;
   scrollbar-color: var(--color-slate-700) transparent;
 }
+
+@layer utilities {
+  @keyframes gradient {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+
+  .animate-gradient {
+    animation: gradient 8s linear infinite;
+  }
+}
+
+.markdown-body {
+  @apply text-slate-300 leading-relaxed;
+}
