@@ -313,18 +313,9 @@ export default function App() {
 
   if (authLoading) {
     return (
-      <div className="h-screen bg-[#0A0D14] flex items-center justify-center">
+      <div className="h-screen bg-[#0F172A] flex items-center justify-center">
         <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
       </div>
-    );
-  }
-
-  if (!user) {
-    return (
-      <>
-        <Toaster theme="dark" position="bottom-right" richColors />
-        <LandingPage onEnterStudio={() => navigate('/')} />
-      </>
     );
   }
 
@@ -434,7 +425,7 @@ export default function App() {
 
   if (!activeWorkspaceId || !localActiveData) {
     return (
-      <div className="flex flex-col h-screen bg-[#0A0D14] text-slate-200 font-sans">
+      <div className="flex flex-col h-screen bg-[#0F172A] text-slate-200 font-sans">
         <Toaster 
           theme="dark" 
           position="bottom-right" 
@@ -443,11 +434,11 @@ export default function App() {
           }}
           richColors
         />
-        <header className="flex items-center justify-between px-8 py-5 bg-[#0F111A] border-b border-white/5">
+        <header className="flex items-center justify-between px-8 py-5 bg-[#1E293B] border-b border-slate-700/50">
           <div className="flex items-center gap-4">
             <button 
               onClick={() => navigate('/')}
-              className="w-10 h-10 bg-white/5 border border-white/10 rounded-xl flex items-center justify-center hover:bg-white/10 transition-colors group p-1.5"
+              className="w-10 h-10 bg-slate-800/50 border border-slate-700/50 rounded-xl flex items-center justify-center hover:bg-slate-800 transition-colors group p-1.5"
               title="AiDirector Dashboard"
             >
               <img src={logoImg} alt="AiDirector Logo" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
@@ -458,7 +449,7 @@ export default function App() {
             </div>
           </div>
           <div className="flex items-center gap-4">
-            <div className="hidden md:flex items-center bg-white/5 border border-white/10 rounded-xl px-4 py-2 gap-3 focus-within:border-indigo-500/50 transition-all">
+            <div className="hidden md:flex items-center bg-slate-800/80 border border-slate-700/50 rounded-xl px-4 py-2 gap-3 focus-within:border-indigo-500/50 transition-all">
               <div className="flex flex-col">
                 <label className="text-[9px] uppercase font-bold text-slate-500 tracking-wider">Gemini API Key</label>
                 <input 
@@ -471,14 +462,14 @@ export default function App() {
               </div>
             </div>
             
-            <div className="flex items-center gap-3 pl-4 border-l border-white/5">
+            <div className="flex items-center gap-3 pl-4 border-l border-slate-700/50">
               <div className="flex flex-col items-end hidden lg:flex">
                 <span className="text-xs text-white font-bold tracking-tight">{user.displayName || 'Creator'}</span>
                 <span className="text-[10px] text-slate-500 font-medium">Pro Member</span>
               </div>
               <button 
                 onClick={logout}
-                className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 hover:border-red-500/50 hover:bg-red-500/10 text-slate-400 hover:text-red-400 transition-all flex items-center justify-center group"
+                className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 hover:border-red-500/50 hover:bg-red-500/10 text-slate-400 hover:text-red-400 transition-all flex items-center justify-center group"
                 title="Sign Out"
               >
                 <LogOut className="w-5 h-5 group-hover:scale-110 transition-transform" />
@@ -500,428 +491,514 @@ export default function App() {
     );
   }
 
-  const { script, style, negativePrompt, secondsPerScene, wordsPerSecond, multiview, strictImage, promptInstructions, promptMode, engine, selectedMotions, selectedShotTypes, scenes } = localActiveData;
+  const studioLayout = () => {
+    if (!user) return <Navigate to="/" replace />;
+    if (!activeWorkspaceId || !localActiveData) {
+      return <Navigate to="/workplace" replace />;
+    }
+
+    const { script, style, negativePrompt, secondsPerScene, wordsPerSecond, multiview, strictImage, promptInstructions, promptMode, engine, selectedMotions, selectedShotTypes, scenes } = localActiveData;
+
+    return (
+      <div className="flex flex-col h-screen bg-[#0F172A] text-slate-200 font-sans overflow-hidden">
+        <Toaster 
+          theme="dark" 
+          position="bottom-right" 
+          toastOptions={{
+            style: { background: '#1A1F2E', border: '1px solid #2D3A4F', color: '#E2E8F0' },
+            className: 'font-sans'
+          }}
+          expand={false}
+          richColors
+        />
+        {/* Header Navigation */}
+        <header className="flex items-center justify-between px-6 py-4 bg-[#1E293B] border-b border-slate-700/50">
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={() => {
+                navigate('/workplace');
+              }}
+              className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-all mr-1"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            <div className="w-8 h-8 bg-slate-900 border border-slate-800 rounded-lg flex items-center justify-center p-1">
+              <img src={logoImg} alt="AiDirector Logo" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+            </div>
+            <div className="flex flex-col">
+              <h1 className="text-sm font-bold tracking-tight text-white flex items-center gap-2">
+                {activeWorkspace?.name}
+                <span className="text-[8px] font-normal text-slate-500 bg-slate-900 border border-slate-800 px-2 py-0.5 rounded-full tracking-widest uppercase">System v3.0</span>
+              </h1>
+              <p className="text-[10px] text-slate-500 font-medium">Video Operating System</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="hidden lg:flex items-center bg-slate-900/50 border border-slate-800 rounded-lg px-3 py-1.5 gap-3 focus-within:border-indigo-500/50 transition-all">
+              <div className="flex flex-col">
+                <label className="text-[8px] uppercase font-bold text-slate-600 tracking-wider">API Key</label>
+                <input 
+                  type="password"
+                  placeholder="Key..."
+                  className="bg-transparent text-[11px] text-indigo-400 outline-none w-32 placeholder:text-slate-800 font-mono"
+                  value={geminiApiKey}
+                  onChange={(e) => updateApiKey(e.target.value)}
+                />
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-900/50 border border-slate-800 rounded-lg">
+               <CloudCheck className={`w-3.5 h-3.5 ${isSyncing ? 'text-indigo-500 animate-pulse' : 'text-emerald-500'}`} />
+               <span className="text-[10px] font-mono text-slate-500 uppercase tracking-tighter">Cloud Sync</span>
+            </div>
+
+            <button 
+              onClick={() => setIsConfigExpanded(!isConfigExpanded)}
+              className={`p-2 rounded border transition-all ${isConfigExpanded ? 'bg-slate-800 border-slate-700 text-indigo-400' : 'bg-indigo-600 border-indigo-500 text-white'}`}
+              title={isConfigExpanded ? "Hide Settings" : "Show Settings"}
+            >
+              <Settings className={`w-4 h-4 ${isGenerating ? 'animate-spin' : ''}`} />
+            </button>
+            <button className="px-3 py-1.5 text-xs font-medium bg-indigo-600 text-white rounded shadow-sm">100+ Batch</button>
+            <button 
+              onClick={handleGenerate}
+              disabled={isGenerating}
+              className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white px-5 py-2.5 rounded-md text-sm font-semibold transition-all shadow-lg shadow-indigo-500/20 flex items-center gap-2 group active:scale-95"
+              id="generate-btn"
+            >
+              {isGenerating ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Play className="w-4 h-4 group-hover:fill-current" />
+              )}
+              <span>{isGenerating ? 'Processing...' : 'Generate Sequences'}</span>
+            </button>
+          </div>
+        </header>
+
+        {/* Tool Configuration Bar */}
+        <AnimatePresence>
+          {isConfigExpanded && (
+            <motion.div 
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="overflow-hidden border-b border-slate-700/50 shrink-0"
+            >
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 xl:grid-cols-10 gap-4 px-6 py-4 bg-[#1E293B]/50 items-start">
+                <div className="col-span-1">
+                  <label className="block text-[9px] uppercase font-bold text-slate-500 mb-1.5 tracking-wider">01. Script</label>
+                  <textarea 
+                    className="w-full bg-[#0F172A] border border-slate-700 rounded-lg p-2 text-[11px] text-slate-200 h-20 resize-none transition-all focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20 outline-none placeholder:opacity-30 custom-scrollbar" 
+                    placeholder="Paste script..."
+                    value={script}
+                    onChange={(e) => updateActiveWorkspace({ script: e.target.value })}
+                    id="script-input"
+                  />
+                </div>
+                <div className="col-span-1">
+                  <label className="block text-[9px] uppercase font-bold text-slate-500 mb-1.5 tracking-wider">02. Style</label>
+                  <textarea 
+                    className="w-full bg-[#0F172A] border border-slate-700 rounded-lg p-2 text-[11px] text-indigo-300 h-20 resize-none transition-all focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20 outline-none placeholder:opacity-30 custom-scrollbar" 
+                    placeholder="Visual style..."
+                    value={style}
+                    onChange={(e) => updateActiveWorkspace({ style: e.target.value })}
+                    id="style-input"
+                  />
+                </div>
+                <div className="col-span-1">
+                  <label className="block text-[9px] uppercase font-bold text-slate-500 mb-1.5 tracking-wider">03. Negative</label>
+                  <textarea 
+                    className="w-full bg-[#0F172A] border border-slate-700 rounded-lg p-2 text-[11px] text-red-300/60 h-20 resize-none transition-all focus:border-red-500/30 focus:ring-1 focus:ring-red-500/10 outline-none placeholder:opacity-30 custom-scrollbar" 
+                    placeholder="Exclusions..."
+                    value={negativePrompt}
+                    onChange={(e) => updateActiveWorkspace({ negativePrompt: e.target.value })}
+                    id="negative-input"
+                  />
+                </div>
+                <div className="col-span-1">
+                  <label className="block text-[9px] uppercase font-bold text-slate-500 mb-1.5 tracking-wider">04. Instructions</label>
+                  <textarea 
+                    value={promptInstructions}
+                    onChange={(e) => updateActiveWorkspace({ promptInstructions: e.target.value })}
+                    placeholder="Custom prompts rules..."
+                    className="w-full bg-[#0F172A] border border-slate-700 rounded-lg p-2 text-[11px] text-slate-300 h-20 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 outline-none resize-none custom-scrollbar placeholder:text-slate-700"
+                  />
+                </div>
+                <div className="col-span-1">
+                  <label className="block text-[9px] uppercase font-bold text-slate-500 mb-1.5 tracking-wider">05. Prompt Mode</label>
+                  <div className="grid grid-cols-1 gap-1">
+                    {['General Image Prompt', 'Structured Prompt', 'Graphic Design', 'JSON'].map((mode) => (
+                      <button
+                        key={mode}
+                        onClick={() => updateActiveWorkspace({ promptMode: mode })}
+                        className={`text-left px-2 py-1 rounded text-[10px] transition-all border ${
+                          promptMode === mode 
+                            ? 'bg-indigo-500/20 border-indigo-500 text-indigo-400 font-bold' 
+                            : 'bg-[#0F172A] border-slate-700 text-slate-500 group-hover:text-slate-300'
+                        }`}
+                      >
+                        {mode}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="col-span-1">
+                  <label className="block text-[9px] uppercase font-bold text-slate-500 mb-1.5 tracking-wider">06. Engine</label>
+                  <div className="grid grid-cols-2 gap-1">
+                    {['Flux', 'Midjourney', 'Stable Diffusion', 'Gemini'].map((eng) => (
+                      <button
+                        key={eng}
+                        onClick={() => updateActiveWorkspace({ engine: eng })}
+                        className={`text-center py-1 rounded text-[10px] transition-all border ${
+                          engine === eng 
+                            ? 'bg-indigo-500/20 border-indigo-500 text-indigo-400 font-bold' 
+                            : 'bg-[#0F172A] border-slate-700 text-slate-500'
+                        }`}
+                      >
+                        {eng}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="col-span-1">
+                  <label className="block text-[9px] uppercase font-bold text-slate-500 mb-1.5 tracking-wider">07. Dynamics</label>
+                  <div className="relative group mb-2">
+                    <select 
+                      className="w-full bg-[#0F172A] border border-slate-700 rounded-lg p-2 text-[11px] text-slate-300 outline-none appearance-none cursor-pointer focus:border-indigo-500 transition-colors"
+                      value={secondsPerScene}
+                      onChange={(e) => updateActiveWorkspace({ secondsPerScene: Number(e.target.value) })}
+                      id="duration-input"
+                    >
+                      <option value="3">3.0s</option>
+                      <option value="4">4.0s</option>
+                      <option value="5">5.0s</option>
+                      <option value="8">8.0s</option>
+                      <option value="12">12.0s</option>
+                    </select>
+                    <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none opacity-50">
+                      <ChevronRight className="w-3 h-3 rotate-90" />
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between gap-1">
+                    <div className="flex items-center gap-1">
+                      <input 
+                        type="number" 
+                        step="0.1" 
+                        min="0.5" 
+                        max="10"
+                        className="w-10 bg-[#0F172A] border border-slate-700/50 rounded px-1 py-0.5 text-[10px] text-indigo-400 outline-none focus:border-indigo-500 transition-all font-mono"
+                        value={wordsPerSecond}
+                        onChange={(e) => updateActiveWorkspace({ wordsPerSecond: Number(e.target.value) })}
+                      />
+                      <span className="text-[8px] text-slate-500 font-mono">w/s</span>
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <button 
+                        onClick={() => updateActiveWorkspace({ strictImage: !strictImage })}
+                        className={`flex items-center justify-center gap-1.5 px-2 py-1 rounded border transition-all ${strictImage ? 'bg-yellow-500/20 border-yellow-500 text-yellow-400' : 'bg-slate-800 border-slate-700 text-slate-600'}`}
+                        id="strict-toggle"
+                      >
+                        <Zap className="w-3 h-3" />
+                        <span className="text-[8px] font-bold uppercase tracking-wider">Strict</span>
+                      </button>
+                      <button 
+                        onClick={() => updateActiveWorkspace({ multiview: !multiview })}
+                        className={`flex items-center justify-center gap-1.5 px-2 py-1 rounded border transition-all ${multiview ? 'bg-indigo-500/20 border-indigo-500 text-indigo-400' : 'bg-slate-800 border-slate-700 text-slate-600'}`}
+                        id="multiview-toggle"
+                      >
+                        <LayoutGrid className="w-3 h-3" />
+                        <span className="text-[8px] font-bold uppercase tracking-wider">Multi</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <div className="col-span-1">
+                  <label className="block text-[9px] uppercase font-bold text-slate-500 mb-1.5 tracking-wider">08. Camera</label>
+                  <div className="bg-[#0F172A] border border-slate-700 rounded-lg p-1.5 h-20 overflow-y-auto custom-scrollbar">
+                    <div className="grid grid-cols-1 gap-0.5">
+                      {shotTypeOptions.map((opt) => (
+                        <label key={opt} className="flex items-center gap-1.5 px-1 py-0.5 hover:bg-slate-800 rounded cursor-pointer transition-colors group">
+                          <input 
+                            type="checkbox" 
+                            className="accent-indigo-500 w-2.5 h-2.5 rounded border-slate-600 bg-slate-900"
+                            checked={selectedShotTypes.includes(opt)}
+                            onChange={() => {
+                              const next = selectedShotTypes.includes(opt) 
+                                ? selectedShotTypes.filter(s => s !== opt) 
+                                : [...selectedShotTypes, opt];
+                              updateActiveWorkspace({ selectedShotTypes: next });
+                            }}
+                          />
+                          <span className={`text-[9px] leading-tight ${selectedShotTypes.includes(opt) ? 'text-indigo-400' : 'text-slate-500'}`}>{opt}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                <div className="col-span-1">
+                  <label className="block text-[9px] uppercase font-bold text-slate-500 mb-1.5 tracking-wider">09. Motion</label>
+                  <div className="bg-[#0F172A] border border-slate-700 rounded-lg p-1.5 h-20 overflow-y-auto custom-scrollbar">
+                    <div className="grid grid-cols-1 gap-0.5">
+                      {motionOptions.map((opt) => (
+                        <label key={opt} className="flex items-center gap-1.5 px-1 py-0.5 hover:bg-slate-800 rounded cursor-pointer transition-colors group">
+                          <input 
+                            type="checkbox" 
+                            className="accent-indigo-500 w-2.5 h-2.5 rounded border-slate-600 bg-slate-900"
+                            checked={selectedMotions.includes(opt)}
+                            onChange={() => {
+                              const next = selectedMotions.includes(opt) 
+                                ? selectedMotions.filter(m => m !== opt) 
+                                : [...selectedMotions, opt];
+                              updateActiveWorkspace({ selectedMotions: next });
+                            }}
+                          />
+                          <span className={`text-[9px] leading-tight ${selectedMotions.includes(opt) ? 'text-indigo-400' : 'text-slate-500'}`}>{opt}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex flex-col justify-between h-24 py-1">
+                  <div>
+                    <label className="block text-[9px] uppercase font-bold text-slate-500 tracking-wider mb-0.5">Status</label>
+                    <div className="text-xl font-mono font-bold text-white flex items-baseline gap-1">
+                      {scenes.length} <span className="text-[10px] font-normal text-indigo-400 italic">Seq</span>
+                    </div>
+                  </div>
+                  <div className="flex gap-1.5">
+                    <button 
+                      onClick={() => { 
+                        updateActiveWorkspace({ scenes: [], script: '' });
+                        toast.info("Workspace cleared");
+                      }}
+                      className="p-1.5 border border-slate-700 hover:border-red-500/50 hover:bg-red-500/10 text-slate-500 hover:text-red-400 transition-all rounded"
+                      title="Reset All"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                    {scenes.length > 0 && (
+                      <button 
+                        onClick={exportExcel}
+                        className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 bg-green-600 hover:bg-green-500 text-white text-[10px] font-bold uppercase tracking-wider rounded transition-all shadow-lg shadow-green-900/20"
+                      >
+                        <Download className="w-3 h-3" />
+                        Export Excel
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Main Content Area */}
+        <main className="flex-1 flex flex-col overflow-hidden bg-slate-900/20">
+          {/* Grid Headers */}
+          <div className="grid grid-cols-[100px_1fr_1.5fr_1.5fr] bg-[#111827] border-b border-slate-800 text-[10px] font-bold uppercase tracking-[0.15em] text-slate-500 sticky top-0 z-20">
+            <div className="p-3 pl-8 flex items-center justify-center">ID</div>
+            <div className="p-3 pl-6 border-l border-slate-800 flex items-center gap-2">
+              <Type className="w-3 h-3 text-indigo-500" /> Script Segment
+            </div>
+            <div className="p-3 pl-6 border-l border-slate-800 flex items-center gap-2">
+              <ImageIcon className="w-3 h-3 text-indigo-500" /> Starting Image [STYLE]
+            </div>
+            <div className="p-3 pl-6 border-l border-slate-800 flex items-center gap-2">
+              <MonitorPlay className="w-3 h-3 text-indigo-500" /> Video Motion Description
+            </div>
+          </div>
+
+          {/* Scrollable Content */}
+          <div className="flex-1 overflow-y-auto bg-slate-800/10 custom-scrollbar">
+            <AnimatePresence mode="popLayout">
+              {scenes.length === 0 ? (
+                <motion.div 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="h-full flex flex-col items-center justify-center p-32 text-center"
+                >
+                  <div className="w-20 h-20 bg-slate-800/50 border border-slate-700/50 flex items-center justify-center rounded-3xl mb-6 relative group">
+                    <div className="absolute inset-0 bg-indigo-500/10 rounded-3xl blur-xl group-hover:bg-indigo-500/20 transition-all"></div>
+                    <Settings className="w-10 h-10 text-slate-600 animate-[spin_12s_linear_infinite] relative" />
+                  </div>
+                  <h3 className="text-white font-semibold text-lg mb-2">Engine Initialization Pending</h3>
+                  <p className="text-slate-500 text-sm max-w-sm mx-auto leading-relaxed italic">
+                    Feed the generator with a script and a visual anchor to synthesize your scene sequence prompts.
+                  </p>
+                </motion.div>
+              ) : (
+                scenes.map((scene, idx) => (
+                  <motion.div
+                    key={scene.id || idx}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: idx * 0.03 }}
+                    className={`grid grid-cols-[100px_1fr_1.5fr_1.5fr] group transition-all duration-200 border-b border-slate-800/30 ${
+                      idx % 2 === 0 ? 'bg-[#111827]' : 'bg-[#0F172A]'
+                    } hover:bg-slate-800/50`}
+                  >
+                    <div className="p-4 flex items-center justify-center">
+                      <span className="font-mono text-[11px] text-slate-500 tracking-wider group-hover:text-indigo-400 transition-colors">
+                        {String(idx + 1).padStart(3, '0')}
+                      </span>
+                    </div>
+                    
+                    <div className="p-4 border-l border-slate-800/50 relative group/cell">
+                      <div className={`border-l-2 ${idx % 3 === 0 ? 'border-indigo-500' : 'border-slate-700'} pl-4 h-full flex flex-col justify-center`}>
+                        <p className="text-[12px] text-slate-300 leading-relaxed italic">{scene.scriptSegment}</p>
+                      </div>
+                      <button 
+                        onClick={() => handleCopy(scene.scriptSegment)}
+                        className="absolute top-2 right-2 p-1 bg-slate-900 border border-slate-700 rounded opacity-0 group-hover/cell:opacity-100 transition-all hover:bg-indigo-600 hover:border-indigo-500 text-slate-400 hover:text-white shadow-xl"
+                      >
+                        <Copy className="w-3 h-3" />
+                      </button>
+                    </div>
+                    
+                    <div className="p-4 border-l border-slate-800/50 relative group/cell flex flex-col justify-center">
+                      <p className="text-[12px] text-slate-400 leading-relaxed font-sans">
+                        {scene.imagePrompt}
+                        {scene.negativePrompt && (
+                          <span className="text-red-400/80 ml-2 italic text-[11px]">
+                            [NEG: {scene.negativePrompt}]
+                          </span>
+                        )}
+                      </p>
+                      <button 
+                        onClick={() => handleCopy(`${scene.imagePrompt}${scene.negativePrompt ? ` --no ${scene.negativePrompt}` : ''}`)}
+                        className="absolute top-2 right-2 p-1 bg-slate-900 border border-slate-700 rounded opacity-0 group-hover/cell:opacity-100 transition-all hover:bg-indigo-600 hover:border-indigo-500 text-slate-400 hover:text-white shadow-xl"
+                      >
+                        <Copy className="w-3 h-3" />
+                      </button>
+                      <div className="mt-2 flex gap-2">
+                         <span className="text-[8px] bg-slate-900 text-slate-500 px-1 py-0.5 rounded border border-slate-800 uppercase tracking-tighter">IMAGE_GEN</span>
+                      </div>
+                    </div>
+                    
+                    <div className="p-4 border-l border-slate-800/50 relative group/cell flex flex-col justify-center">
+                      <p className="text-[12px] text-indigo-300/80 leading-relaxed font-sans">{scene.videoPrompt}</p>
+                      <button 
+                        onClick={() => handleCopy(scene.videoPrompt)}
+                        className="absolute top-2 right-2 p-1 bg-slate-900 border border-slate-700 rounded opacity-0 group-hover/cell:opacity-100 transition-all hover:bg-indigo-600 hover:border-indigo-500 text-slate-400 hover:text-white shadow-xl"
+                      >
+                        <Copy className="w-3 h-3" />
+                      </button>
+                      <div className="mt-2 flex gap-2 items-center">
+                         <span className="text-[8px] bg-indigo-500/10 text-indigo-400 px-1 py-0.5 rounded border border-indigo-500/20 uppercase tracking-tighter">MOTION_PATH</span>
+                         <span className="text-[8px] text-slate-500 font-mono tracking-tighter">
+                           {(idx * secondsPerScene).toFixed(1)}s - {((idx + 1) * secondsPerScene).toFixed(1)}s
+                         </span>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))
+              )}
+            </AnimatePresence>
+          </div>
+        </main>
+
+        {/* Status Footer */}
+        <footer className="px-6 py-2.5 bg-[#1E293B] border-t border-slate-700/50 flex justify-between items-center z-30">
+          <div className="flex items-center gap-6">
+            <div className="flex items-center gap-2">
+              <div className={`w-1.5 h-1.5 rounded-full ${isGenerating ? 'bg-indigo-500 animate-pulse' : 'bg-green-500'}`}></div>
+              <span className="text-[10px] text-slate-400 font-mono tracking-wider uppercase">
+                System {isGenerating ? 'Active' : 'Ready'}: API Connected
+              </span>
+            </div>
+            <div className="h-4 w-[1px] bg-slate-700"></div>
+            <div className="text-[10px] text-slate-500 font-mono">
+              ENGINE: <span className="text-indigo-400">{engine.toUpperCase()}</span> // MODE: <span className="text-white">BATCH_SYNTHESIS</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="text-[10px] text-slate-500 font-medium">Render Estimate: {scenes.length > 0 ? (scenes.length * 0.5).toFixed(1) + ' min' : '--'}</span>
+            <div className="h-2 w-2 rounded-full border border-slate-700 flex items-center justify-center overflow-hidden">
+               <div className="w-full h-full bg-slate-700 opacity-20"></div>
+            </div>
+          </div>
+        </footer>
+      </div>
+    );
+  };
+
+  const dashboardLayout = () => {
+    if (!user) return <Navigate to="/" replace />;
+    
+    return (
+      <div className="flex flex-col h-screen bg-[#0F172A] text-slate-200 font-sans">
+        <Toaster 
+          theme="dark" 
+          position="bottom-right" 
+          toastOptions={{
+            style: { background: '#1A1F2E', border: '1px solid #2D3A4F', color: '#E2E8F0' },
+          }}
+          richColors
+        />
+        <header className="flex items-center justify-between px-8 py-5 bg-[#1E293B] border-b border-slate-700/50">
+          <div className="flex items-center gap-4">
+            <button 
+              onClick={() => navigate('/')}
+              className="w-10 h-10 bg-slate-800/50 border border-slate-700/50 rounded-xl flex items-center justify-center hover:bg-slate-800 transition-colors group p-1.5"
+              title="AiDirector Dashboard"
+            >
+              <img src={logoImg} alt="AiDirector Logo" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+            </button>
+            <div>
+              <h1 className="text-xl font-bold tracking-tight text-white leading-tight">AiDirector</h1>
+              <p className="text-[10px] text-slate-500 uppercase tracking-[0.2em] font-bold">Studio Hub v3.0</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="hidden md:flex items-center bg-slate-800/80 border border-slate-700/50 rounded-xl px-4 py-2 gap-3 focus-within:border-indigo-500/50 transition-all">
+              <div className="flex flex-col">
+                <label className="text-[9px] uppercase font-bold text-slate-500 tracking-wider">Gemini API Key</label>
+                <input 
+                  type="password"
+                  placeholder="Enter API Key..."
+                  className="bg-transparent text-xs text-indigo-400 outline-none w-48 placeholder:text-slate-700 font-mono"
+                  value={geminiApiKey}
+                  onChange={(e) => updateApiKey(e.target.value)}
+                />
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-3 pl-4 border-l border-slate-700/50">
+              <div className="flex flex-col items-end hidden lg:flex">
+                <span className="text-xs text-white font-bold tracking-tight">{user.displayName || 'Creator'}</span>
+                <span className="text-[10px] text-slate-500 font-medium">Pro Member</span>
+              </div>
+              <button 
+                onClick={logout}
+                className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 hover:border-red-500/50 hover:bg-red-500/10 text-slate-400 hover:text-red-400 transition-all flex items-center justify-center group"
+                title="Sign Out"
+              >
+                <LogOut className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              </button>
+            </div>
+          </div>
+        </header>
+
+        <WorkspaceDashboard 
+          workspaces={workspaces}
+          apiKey={geminiApiKey}
+          onApiKeyChange={updateApiKey}
+          onCreate={handleCreateWorkspace}
+          onDelete={handleDeleteWorkspace}
+          onUpdate={handleUpdateWorkspace}
+          onSelect={(ws) => navigate(`/studio/${ws.id}`)}
+        />
+      </div>
+    );
+  };
 
   return (
-    <div className="flex flex-col h-screen bg-[#0A0D14] text-slate-200 font-sans overflow-hidden">
-      <Toaster 
-        theme="dark" 
-        position="bottom-right" 
-        toastOptions={{
-          style: { background: '#1A1F2E', border: '1px solid #2D3A4F', color: '#E2E8F0' },
-          className: 'font-sans'
-        }}
-        expand={false}
-        richColors
-      />
-      {/* Header Navigation */}
-      <header className="flex items-center justify-between px-6 py-4 bg-[#0F111A] border-b border-white/5">
-        <div className="flex items-center gap-3">
-          <button 
-            onClick={() => {
-              navigate('/');
-            }}
-            className="p-2 hover:bg-white/5 rounded-lg text-slate-400 hover:text-white transition-all mr-1"
-          >
-            <ChevronLeft className="w-5 h-5" />
-          </button>
-          <div className="w-8 h-8 bg-white/5 border border-white/10 rounded-lg flex items-center justify-center p-1">
-            <img src={logoImg} alt="AiDirector Logo" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
-          </div>
-          <div className="flex flex-col">
-            <h1 className="text-sm font-bold tracking-tight text-white flex items-center gap-2">
-              {activeWorkspace?.name}
-              <span className="text-[8px] font-normal text-slate-500 bg-white/5 border border-white/10 px-2 py-0.5 rounded-full tracking-widest uppercase">System v3.0</span>
-            </h1>
-            <p className="text-[10px] text-slate-500 font-medium">Video Operating System</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-4">
-          <div className="hidden lg:flex items-center bg-[#0A0D14] border border-white/5 rounded-lg px-3 py-1.5 gap-3 focus-within:border-indigo-500/50 transition-all">
-            <div className="flex flex-col">
-              <label className="text-[8px] uppercase font-bold text-slate-600 tracking-wider">API Key</label>
-              <input 
-                type="password"
-                placeholder="Key..."
-                className="bg-transparent text-[11px] text-indigo-400 outline-none w-32 placeholder:text-slate-800 font-mono"
-                value={geminiApiKey}
-                onChange={(e) => updateApiKey(e.target.value)}
-              />
-            </div>
-          </div>
-          
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-[#0A0D14] border border-white/5 rounded-lg">
-             <CloudCheck className={`w-3.5 h-3.5 ${isSyncing ? 'text-indigo-500 animate-pulse' : 'text-emerald-500'}`} />
-             <span className="text-[10px] font-mono text-slate-500 uppercase tracking-tighter">Cloud Sync</span>
-          </div>
-
-          <button 
-            onClick={() => setIsConfigExpanded(!isConfigExpanded)}
-            className={`p-2 rounded border transition-all ${isConfigExpanded ? 'bg-white/5 border-white/10 text-indigo-400' : 'bg-indigo-600 border-indigo-500 text-white'}`}
-            title={isConfigExpanded ? "Hide Settings" : "Show Settings"}
-          >
-            <Settings className={`w-4 h-4 ${isGenerating ? 'animate-spin' : ''}`} />
-          </button>
-          <button className="px-3 py-1.5 text-xs font-medium bg-indigo-600 text-white rounded shadow-sm">100+ Batch</button>
-          <button 
-            onClick={handleGenerate}
-            disabled={isGenerating}
-            className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white px-5 py-2.5 rounded-md text-sm font-semibold transition-all shadow-lg shadow-indigo-500/20 flex items-center gap-2 group active:scale-95"
-            id="generate-btn"
-          >
-            {isGenerating ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Play className="w-4 h-4 group-hover:fill-current" />
-            )}
-            <span>{isGenerating ? 'Processing...' : 'Generate Sequences'}</span>
-          </button>
-        </div>
-      </header>
-
-      {/* Tool Configuration Bar */}
-      <AnimatePresence>
-        {isConfigExpanded && (
-          <motion.div 
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            className="overflow-hidden border-b border-slate-700/50 shrink-0"
-          >
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 xl:grid-cols-10 gap-4 px-6 py-4 bg-[#0F111A]/50 items-start">
-              <div className="col-span-1">
-                <label className="block text-[9px] uppercase font-bold text-slate-500 mb-1.5 tracking-wider">01. Script</label>
-                <textarea 
-                  className="w-full bg-[#0A0D14] border border-white/5 rounded-lg p-2 text-[11px] text-slate-200 h-20 resize-none transition-all focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20 outline-none placeholder:opacity-30 custom-scrollbar" 
-                  placeholder="Paste script..."
-                  value={script}
-                  onChange={(e) => updateActiveWorkspace({ script: e.target.value })}
-                  id="script-input"
-                />
-              </div>
-              <div className="col-span-1">
-                <label className="block text-[9px] uppercase font-bold text-slate-500 mb-1.5 tracking-wider">02. Style</label>
-                <textarea 
-                  className="w-full bg-[#0A0D14] border border-white/5 rounded-lg p-2 text-[11px] text-indigo-300 h-20 resize-none transition-all focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20 outline-none placeholder:opacity-30 custom-scrollbar" 
-                  placeholder="Visual style..."
-                  value={style}
-                  onChange={(e) => updateActiveWorkspace({ style: e.target.value })}
-                  id="style-input"
-                />
-              </div>
-              <div className="col-span-1">
-                <label className="block text-[9px] uppercase font-bold text-slate-500 mb-1.5 tracking-wider">03. Negative</label>
-                <textarea 
-                  className="w-full bg-[#0A0D14] border border-white/5 rounded-lg p-2 text-[11px] text-red-300/60 h-20 resize-none transition-all focus:border-red-500/30 focus:ring-1 focus:ring-red-500/10 outline-none placeholder:opacity-30 custom-scrollbar" 
-                  placeholder="Exclusions..."
-                  value={negativePrompt}
-                  onChange={(e) => updateActiveWorkspace({ negativePrompt: e.target.value })}
-                  id="negative-input"
-                />
-              </div>
-              <div className="col-span-1">
-                <label className="block text-[9px] uppercase font-bold text-slate-500 mb-1.5 tracking-wider">04. Instructions</label>
-                <textarea 
-                  value={promptInstructions}
-                  onChange={(e) => updateActiveWorkspace({ promptInstructions: e.target.value })}
-                  placeholder="Custom prompts rules..."
-                  className="w-full bg-[#0A0D14] border border-white/5 rounded-lg p-2 text-[11px] text-slate-300 h-20 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 outline-none resize-none custom-scrollbar placeholder:text-slate-700"
-                />
-              </div>
-              <div className="col-span-1">
-                <label className="block text-[9px] uppercase font-bold text-slate-500 mb-1.5 tracking-wider">05. Prompt Mode</label>
-                <div className="grid grid-cols-1 gap-1">
-                  {['General Image Prompt', 'Structured Prompt', 'Graphic Design', 'JSON'].map((mode) => (
-                    <button
-                      key={mode}
-                      onClick={() => updateActiveWorkspace({ promptMode: mode })}
-                      className={`text-left px-2 py-1 rounded text-[10px] transition-all border ${
-                        promptMode === mode 
-                          ? 'bg-indigo-500/20 border-indigo-500 text-indigo-400 font-bold' 
-                          : 'bg-[#0A0D14] border-white/5 text-slate-500 group-hover:text-slate-300'
-                      }`}
-                    >
-                      {mode}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className="col-span-1">
-                <label className="block text-[9px] uppercase font-bold text-slate-500 mb-1.5 tracking-wider">06. Engine</label>
-                <div className="grid grid-cols-2 gap-1">
-                  {['Flux', 'Midjourney', 'Stable Diffusion', 'Gemini'].map((eng) => (
-                    <button
-                      key={eng}
-                      onClick={() => updateActiveWorkspace({ engine: eng })}
-                      className={`text-center py-1 rounded text-[10px] transition-all border ${
-                        engine === eng 
-                          ? 'bg-indigo-500/20 border-indigo-500 text-indigo-400 font-bold' 
-                          : 'bg-[#0A0D14] border-white/5 text-slate-500'
-                      }`}
-                    >
-                      {eng}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className="col-span-1">
-                <label className="block text-[9px] uppercase font-bold text-slate-500 mb-1.5 tracking-wider">07. Dynamics</label>
-                <div className="relative group mb-2">
-                  <select 
-                    className="w-full bg-[#0A0D14] border border-white/5 rounded-lg p-2 text-[11px] text-slate-300 outline-none appearance-none cursor-pointer focus:border-indigo-500 transition-colors"
-                    value={secondsPerScene}
-                    onChange={(e) => updateActiveWorkspace({ secondsPerScene: Number(e.target.value) })}
-                    id="duration-input"
-                  >
-                    <option value="3">3.0s</option>
-                    <option value="4">4.0s</option>
-                    <option value="5">5.0s</option>
-                    <option value="8">8.0s</option>
-                    <option value="12">12.0s</option>
-                  </select>
-                  <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none opacity-50">
-                    <ChevronRight className="w-3 h-3 rotate-90" />
-                  </div>
-                </div>
-                <div className="flex items-center justify-between gap-1">
-                  <div className="flex items-center gap-1">
-                    <input 
-                      type="number" 
-                      step="0.1" 
-                      min="0.5" 
-                      max="10"
-                      className="w-10 bg-[#0A0D14] border border-white/5 rounded px-1 py-0.5 text-[10px] text-indigo-400 outline-none focus:border-indigo-500 transition-all font-mono"
-                      value={wordsPerSecond}
-                      onChange={(e) => updateActiveWorkspace({ wordsPerSecond: Number(e.target.value) })}
-                    />
-                    <span className="text-[8px] text-slate-500 font-mono">w/s</span>
-                  </div>
-                  <div className="flex flex-col gap-1.5">
-                    <button 
-                      onClick={() => updateActiveWorkspace({ strictImage: !strictImage })}
-                      className={`flex items-center justify-center gap-1.5 px-2 py-1 rounded border transition-all ${strictImage ? 'bg-yellow-500/20 border-yellow-500 text-yellow-400' : 'bg-white/5 border-white/10 text-slate-600'}`}
-                      id="strict-toggle"
-                    >
-                      <Zap className="w-3 h-3" />
-                      <span className="text-[8px] font-bold uppercase tracking-wider">Strict</span>
-                    </button>
-                    <button 
-                      onClick={() => updateActiveWorkspace({ multiview: !multiview })}
-                      className={`flex items-center justify-center gap-1.5 px-2 py-1 rounded border transition-all ${multiview ? 'bg-indigo-500/20 border-indigo-500 text-indigo-400' : 'bg-white/5 border-white/10 text-slate-600'}`}
-                      id="multiview-toggle"
-                    >
-                      <LayoutGrid className="w-3 h-3" />
-                      <span className="text-[8px] font-bold uppercase tracking-wider">Multi</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-              <div className="col-span-1">
-                <label className="block text-[9px] uppercase font-bold text-slate-500 mb-1.5 tracking-wider">08. Camera</label>
-                <div className="bg-[#0A0D14] border border-white/5 rounded-lg p-1.5 h-20 overflow-y-auto custom-scrollbar">
-                  <div className="grid grid-cols-1 gap-0.5">
-                    {shotTypeOptions.map((opt) => (
-                      <label key={opt} className="flex items-center gap-1.5 px-1 py-0.5 hover:bg-slate-800 rounded cursor-pointer transition-colors group">
-                        <input 
-                          type="checkbox" 
-                          className="accent-indigo-500 w-2.5 h-2.5 rounded border-slate-600 bg-[#0A0D14]"
-                          checked={selectedShotTypes.includes(opt)}
-                          onChange={() => {
-                            const next = selectedShotTypes.includes(opt) 
-                              ? selectedShotTypes.filter(s => s !== opt) 
-                              : [...selectedShotTypes, opt];
-                            updateActiveWorkspace({ selectedShotTypes: next });
-                          }}
-                        />
-                        <span className={`text-[9px] leading-tight ${selectedShotTypes.includes(opt) ? 'text-indigo-400' : 'text-slate-500'}`}>{opt}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              </div>
-              <div className="col-span-1">
-                <label className="block text-[9px] uppercase font-bold text-slate-500 mb-1.5 tracking-wider">09. Motion</label>
-                <div className="bg-[#0A0D14] border border-white/5 rounded-lg p-1.5 h-20 overflow-y-auto custom-scrollbar">
-                  <div className="grid grid-cols-1 gap-0.5">
-                    {motionOptions.map((opt) => (
-                      <label key={opt} className="flex items-center gap-1.5 px-1 py-0.5 hover:bg-slate-800 rounded cursor-pointer transition-colors group">
-                        <input 
-                          type="checkbox" 
-                          className="accent-indigo-500 w-2.5 h-2.5 rounded border-slate-600 bg-[#0A0D14]"
-                          checked={selectedMotions.includes(opt)}
-                          onChange={() => {
-                            const next = selectedMotions.includes(opt) 
-                              ? selectedMotions.filter(m => m !== opt) 
-                              : [...selectedMotions, opt];
-                            updateActiveWorkspace({ selectedMotions: next });
-                          }}
-                        />
-                        <span className={`text-[9px] leading-tight ${selectedMotions.includes(opt) ? 'text-indigo-400' : 'text-slate-500'}`}>{opt}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              </div>
-              <div className="flex flex-col justify-between h-24 py-1">
-                <div>
-                  <label className="block text-[9px] uppercase font-bold text-slate-500 tracking-wider mb-0.5">Status</label>
-                  <div className="text-xl font-mono font-bold text-white flex items-baseline gap-1">
-                    {scenes.length} <span className="text-[10px] font-normal text-indigo-400 italic">Seq</span>
-                  </div>
-                </div>
-                <div className="flex gap-1.5">
-                  <button 
-                    onClick={() => { 
-                      updateActiveWorkspace({ scenes: [], script: '' });
-                      toast.info("Workspace cleared");
-                    }}
-                    className="p-1.5 border border-slate-700 hover:border-red-500/50 hover:bg-red-500/10 text-slate-500 hover:text-red-400 transition-all rounded"
-                    title="Reset All"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                  {scenes.length > 0 && (
-                    <button 
-                      onClick={exportExcel}
-                      className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 bg-green-600 hover:bg-green-500 text-white text-[10px] font-bold uppercase tracking-wider rounded transition-all shadow-lg shadow-green-900/20"
-                    >
-                      <Download className="w-3 h-3" />
-                      Export Excel
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Main Content Area */}
-      <main className="flex-1 flex flex-col overflow-hidden bg-[#0A0D14]">
-        {/* Grid Headers */}
-        <div className="grid grid-cols-[100px_1fr_1.5fr_1.5fr] bg-[#0F111A] border-b border-white/5 text-[10px] font-bold uppercase tracking-[0.15em] text-slate-500 sticky top-0 z-20">
-          <div className="p-3 pl-8 flex items-center justify-center">ID</div>
-          <div className="p-3 pl-6 border-l border-white/5 flex items-center gap-2">
-            <Type className="w-3 h-3 text-indigo-500" /> Script Segment
-          </div>
-          <div className="p-3 pl-6 border-l border-white/5 flex items-center gap-2">
-            <ImageIcon className="w-3 h-3 text-indigo-500" /> Starting Image [STYLE]
-          </div>
-          <div className="p-3 pl-6 border-l border-white/5 flex items-center gap-2">
-            <MonitorPlay className="w-3 h-3 text-indigo-500" /> Video Motion Description
-          </div>
-        </div>
-
-        {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto bg-[#0A0D14] custom-scrollbar">
-          <AnimatePresence mode="popLayout">
-            {scenes.length === 0 ? (
-              <motion.div 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="h-full flex flex-col items-center justify-center p-32 text-center"
-              >
-                <div className="w-20 h-20 bg-white/5 border border-white/10 flex items-center justify-center rounded-3xl mb-6 relative group">
-                  <div className="absolute inset-0 bg-indigo-500/10 rounded-3xl blur-xl group-hover:bg-indigo-500/20 transition-all"></div>
-                  <Settings className="w-10 h-10 text-slate-600 animate-[spin_12s_linear_infinite] relative" />
-                </div>
-                <h3 className="text-white font-semibold text-lg mb-2">Engine Initialization Pending</h3>
-                <p className="text-slate-500 text-sm max-w-sm mx-auto leading-relaxed italic">
-                  Feed the generator with a script and a visual anchor to synthesize your scene sequence prompts.
-                </p>
-              </motion.div>
-            ) : (
-              scenes.map((scene, idx) => (
-                <motion.div
-                  key={scene.id || idx}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: idx * 0.03 }}
-                  className={`grid grid-cols-[100px_1fr_1.5fr_1.5fr] group transition-all duration-200 border-b border-white/5 ${
-                    idx % 2 === 0 ? 'bg-[#0A0D14]' : 'bg-[#0F111A]'
-                  } hover:bg-white/5`}
-                >
-                  <div className="p-4 flex items-center justify-center">
-                    <span className="font-mono text-[11px] text-slate-500 tracking-wider group-hover:text-indigo-400 transition-colors">
-                      {String(idx + 1).padStart(3, '0')}
-                    </span>
-                  </div>
-                  
-                  <div className="p-4 border-l border-white/5 relative group/cell">
-                    <div className={`border-l-2 ${idx % 3 === 0 ? 'border-indigo-500' : 'border-slate-700'} pl-4 h-full flex flex-col justify-center`}>
-                      <p className="text-[12px] text-slate-300 leading-relaxed italic">{scene.scriptSegment}</p>
-                    </div>
-                    <button 
-                      onClick={() => handleCopy(scene.scriptSegment)}
-                      className="absolute top-2 right-2 p-1 bg-[#0A0D14] border border-white/10 rounded opacity-0 group-hover/cell:opacity-100 transition-all hover:bg-indigo-600 hover:border-indigo-500 text-slate-400 hover:text-white shadow-xl"
-                    >
-                      <Copy className="w-3 h-3" />
-                    </button>
-                  </div>
-                  
-                  <div className="p-4 border-l border-white/5 relative group/cell flex flex-col justify-center">
-                    <p className="text-[12px] text-slate-400 leading-relaxed font-sans">
-                      {scene.imagePrompt}
-                      {scene.negativePrompt && (
-                        <span className="text-red-400/80 ml-2 italic text-[11px]">
-                          [NEG: {scene.negativePrompt}]
-                        </span>
-                      )}
-                    </p>
-                    <button 
-                      onClick={() => handleCopy(`${scene.imagePrompt}${scene.negativePrompt ? ` --no ${scene.negativePrompt}` : ''}`)}
-                      className="absolute top-2 right-2 p-1 bg-[#0A0D14] border border-white/10 rounded opacity-0 group-hover/cell:opacity-100 transition-all hover:bg-indigo-600 hover:border-indigo-500 text-slate-400 hover:text-white shadow-xl"
-                    >
-                      <Copy className="w-3 h-3" />
-                    </button>
-                    <div className="mt-2 flex gap-2">
-                       <span className="text-[8px] bg-[#0A0D14] text-slate-500 px-1 py-0.5 rounded border border-white/5 uppercase tracking-tighter">IMAGE_GEN</span>
-                    </div>
-                  </div>
-                  
-                  <div className="p-4 border-l border-white/5 relative group/cell flex flex-col justify-center">
-                    <p className="text-[12px] text-indigo-300/80 leading-relaxed font-sans">{scene.videoPrompt}</p>
-                    <button 
-                      onClick={() => handleCopy(scene.videoPrompt)}
-                      className="absolute top-2 right-2 p-1 bg-[#0A0D14] border border-white/10 rounded opacity-0 group-hover/cell:opacity-100 transition-all hover:bg-indigo-600 hover:border-indigo-500 text-slate-400 hover:text-white shadow-xl"
-                    >
-                      <Copy className="w-3 h-3" />
-                    </button>
-                    <div className="mt-2 flex gap-2 items-center">
-                       <span className="text-[8px] bg-indigo-500/10 text-indigo-400 px-1 py-0.5 rounded border border-indigo-500/20 uppercase tracking-tighter">MOTION_PATH</span>
-                       <span className="text-[8px] text-slate-500 font-mono tracking-tighter">
-                         {(idx * secondsPerScene).toFixed(1)}s - {((idx + 1) * secondsPerScene).toFixed(1)}s
-                       </span>
-                    </div>
-                  </div>
-                </motion.div>
-              ))
-            )}
-          </AnimatePresence>
-        </div>
-      </main>
-
-      {/* Status Footer */}
-      <footer className="px-6 py-2.5 bg-[#0F111A] border-t border-white/5 flex justify-between items-center z-30">
-        <div className="flex items-center gap-6">
-          <div className="flex items-center gap-2">
-            <div className={`w-1.5 h-1.5 rounded-full ${isGenerating ? 'bg-indigo-500 animate-pulse' : 'bg-green-500'}`}></div>
-            <span className="text-[10px] text-slate-400 font-mono tracking-wider uppercase">
-              System {isGenerating ? 'Active' : 'Ready'}: API Connected
-            </span>
-          </div>
-          <div className="h-4 w-[1px] bg-white/5"></div>
-          <div className="text-[10px] text-slate-500 font-mono">
-            ENGINE: <span className="text-indigo-400">{engine.toUpperCase()}</span> // MODE: <span className="text-white">BATCH_SYNTHESIS</span>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <span className="text-[10px] text-slate-500 font-medium">Render Estimate: {scenes.length > 0 ? (scenes.length * 0.5).toFixed(1) + ' min' : '--'}</span>
-          <div className="h-2 w-2 rounded-full border border-white/10 flex items-center justify-center overflow-hidden">
-             <div className="w-full h-full bg-white/5 opacity-20"></div>
-          </div>
-        </div>
-      </footer>
-    </div>
+    <Routes>
+      <Route path="/" element={<LandingPage onEnterStudio={() => navigate('/workplace')} />} />
+      <Route path="/workplace" element={dashboardLayout()} />
+      <Route path="/studio/:id" element={studioLayout()} />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
 }

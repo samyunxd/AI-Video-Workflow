@@ -174,7 +174,7 @@ export default function WorkspaceDashboard({
   };
 
   return (
-    <div className="flex-1 flex flex-col bg-[#0A0D14] overflow-hidden relative">
+    <div className="flex-1 flex flex-col bg-[#0F172A] overflow-hidden relative">
       {/* Delete Confirmation Modal */}
       <AnimatePresence>
         {isDeleteModalOpen && (
@@ -210,7 +210,7 @@ export default function WorkspaceDashboard({
                     type="text" 
                     value={deleteConfirmInput}
                     onChange={(e) => setDeleteConfirmInput(e.target.value)}
-                    className="w-full bg-[#0A0D14] border border-red-500/20 rounded-xl px-4 py-4 text-center text-red-400 font-bold tracking-widest outline-none focus:border-red-500/50 transition-all placeholder:text-slate-800"
+                    className="w-full bg-[#0F172A] border border-red-500/20 rounded-xl px-4 py-4 text-center text-red-400 font-bold tracking-widest outline-none focus:border-red-500/50 transition-all placeholder:text-slate-800"
                     placeholder="DELETE"
                   />
                 </div>
@@ -262,8 +262,8 @@ export default function WorkspaceDashboard({
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div>
                   <label className="block text-[10px] uppercase font-bold text-slate-500 mb-3 tracking-widest">Workspace Logo</label>
-                  <div className="flex items-center gap-6 mb-6 p-4 bg-[#0A0D14] rounded-2xl border border-white/5">
-                    <div className="w-16 h-16 bg-white/5 rounded-xl overflow-hidden flex items-center justify-center shrink-0 border border-white/10">
+                  <div className="flex items-center gap-6 mb-6 p-4 bg-slate-900 rounded-2xl border border-slate-700/50">
+                    <div className="w-16 h-16 bg-slate-800 rounded-xl overflow-hidden flex items-center justify-center shrink-0 border border-slate-700/50">
                       {formLogo ? (
                         <img src={formLogo} alt="Logo Preview" className="w-full h-full object-cover" />
                       ) : (
@@ -310,7 +310,7 @@ export default function WorkspaceDashboard({
                           type="text" 
                           value={formLogo.startsWith('data:') ? '' : formLogo}
                           onChange={(e) => setFormLogo(e.target.value)}
-                          className="w-full bg-[#0A0D14] border border-white/5 rounded-lg px-3 py-2 text-[11px] text-slate-400 outline-none focus:border-indigo-500 transition-all font-mono"
+                          className="w-full bg-slate-900 border border-slate-700/50 rounded-lg px-3 py-2 text-[11px] text-slate-400 outline-none focus:border-indigo-500 transition-all font-mono"
                           placeholder="Or paste image URL..."
                         />
                       </div>
@@ -324,7 +324,7 @@ export default function WorkspaceDashboard({
                     type="text" 
                     value={formName}
                     onChange={(e) => setFormName(e.target.value)}
-                    className="w-full bg-[#0A0D14] border border-white/5 rounded-xl px-4 py-3 text-slate-200 outline-none focus:border-indigo-500 transition-all font-medium"
+                    className="w-full bg-slate-900 border border-slate-700/50 rounded-xl px-4 py-3 text-slate-200 outline-none focus:border-indigo-500 transition-all font-medium"
                     placeholder="e.g., Summer Campaign"
                   />
                 </div>
@@ -333,7 +333,7 @@ export default function WorkspaceDashboard({
                   <textarea 
                     value={formDesc}
                     onChange={(e) => setFormDesc(e.target.value)}
-                    className="w-full bg-[#0A0D14] border border-white/5 rounded-xl px-4 py-3 text-slate-200 outline-none focus:border-indigo-500 transition-all h-24 resize-none text-sm leading-relaxed"
+                    className="w-full bg-slate-900 border border-slate-700/50 rounded-xl px-4 py-3 text-slate-200 outline-none focus:border-indigo-500 transition-all h-24 resize-none text-sm leading-relaxed"
                     placeholder="What's this workflow for?"
                   />
                 </div>
@@ -382,7 +382,7 @@ export default function WorkspaceDashboard({
               <input 
                 type="text" 
                 placeholder="Search workspaces..." 
-                className="w-full bg-[#1A1F2E] border border-white/5 rounded-xl pl-11 pr-4 py-3 text-slate-200 outline-none focus:border-indigo-500 transition-all font-medium"
+                className="w-full bg-[#1e293b] border border-slate-700/50 rounded-xl pl-11 pr-4 py-3 text-slate-200 outline-none focus:border-indigo-500 transition-all font-medium"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
@@ -391,7 +391,7 @@ export default function WorkspaceDashboard({
             <div className="flex flex-col md:flex-row gap-4">
               {workspaces.length > 0 && (
               <div className="flex gap-4">
-                <div className="bg-[#1A1F2E] border border-white/5 px-6 py-3 rounded-xl flex items-center gap-3">
+                <div className="bg-[#1e293b] border border-slate-700/50 px-6 py-3 rounded-xl flex items-center gap-3">
                   <Layout className="w-4 h-4 text-indigo-400" />
                   <span className="text-sm font-medium text-slate-300">{workspaces.length} Projects</span>
                 </div>
@@ -422,11 +422,11 @@ export default function WorkspaceDashboard({
                   layoutId={ws.id}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="bg-[#1A1F2E] border border-white/5 rounded-2xl p-6 group hover:border-indigo-500/50 transition-all cursor-pointer relative flex flex-col h-full overflow-hidden"
+                  className="bg-[#1e293b] border border-slate-700/50 rounded-2xl p-6 group hover:border-indigo-500/50 transition-all cursor-pointer relative flex flex-col h-full overflow-hidden"
                   onClick={() => onSelect(ws)}
                   style={{
-                    boxShadow: `0 0 60px -20px ${ws.themeColor || '#6366F1'}66`,
-                    background: `linear-gradient(135deg, #1A1F2E 0%, #0A0D14 100%)`,
+                    boxShadow: `0 0 60px -20px ${ws.themeColor || '#6366F1'}44`,
+                    background: `linear-gradient(135deg, #1e293b 0%, #0f172a 100%)`,
                   } as any}
                 >
                   {/* Ambient Glow Gradient Layer */}
@@ -521,7 +521,7 @@ export default function WorkspaceDashboard({
       </div>
 
       {/* Footer info */}
-      <div className="px-8 py-4 bg-[#0F111A] border-t border-white/5 text-center">
+      <div className="px-8 py-4 bg-[#1E293B] border-t border-slate-700/50 text-center">
         <p className="text-slate-600 text-[10px] uppercase font-bold tracking-[0.2em]">
           AiDirector Systems • Advanced Workspace Sync
         </p>
