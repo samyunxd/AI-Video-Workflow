@@ -9,6 +9,7 @@ export interface WorkspaceData {
   multiview: boolean;
   strictImage: boolean;
   promptInstructions: string;
+  guidanceInstructions: string;
   promptMode: string;
   engine: string;
   selectedMotions: string[];

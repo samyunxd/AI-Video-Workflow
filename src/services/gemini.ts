@@ -6,6 +6,7 @@ export interface ScenePrompt {
   imagePrompt: string;
   videoPrompt: string;
   negativePrompt: string;
+  guidance: string;
 }
 
 export async function generateBulkPrompts(
@@ -20,6 +21,7 @@ export async function generateBulkPrompts(
   strictImage: boolean = false,
   allowedShotTypes: string[] = ['Wide Shot', 'Medium Shot', 'Close-up'],
   promptInstructions: string = "",
+  guidanceInstructions: string = "",
   promptMode: string = "Structured Prompt",
   engine: string = "Gemini"
 ): Promise<ScenePrompt[]> {
@@ -104,13 +106,22 @@ REQUIRED FIELDS:
 - "imagePrompt": The descriptive list. YOU MUST APPEND the scene-specific negative prompt at the end using: " --no [calculated negative prompt]".
 - "videoPrompt": Motion description using ${motionInstruction}.
 - "negativePrompt": A SMART, context-aware negative prompt. USE the global input (${negativePrompt}) as a baseline, but ADD scene-specific exclusions. For example, if the scene is a quiet interior, add "street noise, bright sunlight". If it's a close-up, add "distracting background details". DO NOT just copy-paste the global prompt; make it unique to what SHOULD NOT be in this specific frame.
+- "guidance": DIRECTOR'S GUIDANCE. Act as the World Simulation Director. Your goal is to manage physical continuity and state updates. 
+  * RULES OF REALITY: 
+    - Identify if this scene is a CONTINUATION (80-90% of cases), TRANSITION, or HARD CUT.
+    - Treat scenes as "state updates of a continuous world simulation".
+    - Focus on the BOOKEND SYSTEM: 
+        a) FIRST FRAME (Restoration Instruction): Tell the user how to restore the exact spatial state and character placement from the previous scene's end. 
+        b) LAST FRAME (State Export): Define where everything ends up spatially and the direction of movement for the next scene to inherit.
+    - Guidance must be technical and actionable, explaining HOW to maintain stable identities, lighting, and camera setups.
+    - Use the following user-defined guidelines for the specific project tone: [${guidanceInstructions || "No additional specific guidance instructions provided."}].
 
 ${shotTypeInstruction}
 ${strictInstruction}
 
 STYLE OVERRIDE: Incorporate "${style}" into every imagePrompt.
 
-USER CUSTOM INSTRUCTIONS:
+USER CUSTOM PROMPT INSTRUCTIONS:
 ${promptInstructions || "No additional specific instructions."}
 
 Output: JSON array of objects.`;
@@ -131,8 +142,9 @@ Output: JSON array of objects.`;
             imagePrompt: { type: Type.STRING },
             videoPrompt: { type: Type.STRING },
             negativePrompt: { type: Type.STRING },
+            guidance: { type: Type.STRING },
           },
-          required: ["id", "scriptSegment", "imagePrompt", "videoPrompt", "negativePrompt"],
+          required: ["id", "scriptSegment", "imagePrompt", "videoPrompt", "negativePrompt", "guidance"],
         },
       },
     },
