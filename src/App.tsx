@@ -56,7 +56,6 @@ const DEFAULT_DATA: WorkspaceData = {
   multiview: false,
   strictImage: false,
   promptInstructions: '',
-  guidanceInstructions: '',
   promptMode: 'Structured Prompt',
   engine: 'Gemini',
   selectedMotions: ['Static Camera', 'Pan Right', 'Tilt Down', 'Zoom In', 'Tracking Shot'],
@@ -322,7 +321,7 @@ export default function App() {
 
   const handleGenerate = async () => {
     if (!activeWorkspace) return;
-    const { script, style, secondsPerScene, multiview, negativePrompt, wordsPerSecond, selectedMotions, strictImage, selectedShotTypes, promptInstructions, guidanceInstructions, promptMode, engine } = activeWorkspace.data;
+    const { script, style, secondsPerScene, multiview, negativePrompt, wordsPerSecond, selectedMotions, strictImage, selectedShotTypes, promptInstructions, promptMode, engine } = activeWorkspace.data;
 
     if (!script.trim()) {
       toast.error("Script is empty. Please provide a script first.");
@@ -346,7 +345,6 @@ export default function App() {
         strictImage,
         selectedShotTypes,
         promptInstructions,
-        guidanceInstructions,
         promptMode,
         engine
       );
@@ -384,8 +382,7 @@ export default function App() {
           'SEQUENCE ID': s.id || String(index + 1).padStart(3, '0'),
           'SCRIPT SEGMENT': s.scriptSegment,
           'IMAGE PROMPT & NEGATIVE': `${s.imagePrompt}${s.negativePrompt ? ` [NEG: ${s.negativePrompt}]` : ''}`,
-          'VIDEO MOTION & ACTION': s.videoPrompt,
-          'DIRECTOR GUIDANCE': s.guidance || ''
+          'VIDEO MOTION & ACTION': s.videoPrompt
         });
         
         if (index < scenes.length - 1) {
@@ -393,8 +390,7 @@ export default function App() {
             'SEQUENCE ID': '',
             'SCRIPT SEGMENT': '',
             'IMAGE PROMPT & NEGATIVE': '',
-            'VIDEO MOTION & ACTION': '',
-            'DIRECTOR GUIDANCE': ''
+            'VIDEO MOTION & ACTION': ''
           }); 
         }
       });
@@ -403,9 +399,8 @@ export default function App() {
       const wscols = [
         { wch: 15 }, 
         { wch: 50 }, 
-        { wch: 80 }, 
-        { wch: 60 }, 
-        { wch: 60 }, 
+        { wch: 85 }, 
+        { wch: 65 }, 
       ];
       worksheet['!cols'] = wscols;
 
@@ -631,16 +626,7 @@ export default function App() {
                   />
                 </div>
                 <div className="col-span-1">
-                  <label className="block text-[9px] uppercase font-bold text-emerald-500/80 mb-1.5 tracking-wider">05. Guidance Inst.</label>
-                  <textarea 
-                    value={localActiveData?.guidanceInstructions || ""}
-                    onChange={(e) => updateActiveWorkspace({ guidanceInstructions: e.target.value })}
-                    placeholder="Technical advice rules..."
-                    className="w-full bg-[#0F172A] border border-slate-700 rounded-lg p-2 text-[11px] text-emerald-400/80 h-20 focus:ring-1 focus:ring-emerald-500/30 focus:border-emerald-500 outline-none resize-none custom-scrollbar placeholder:text-slate-800"
-                  />
-                </div>
-                <div className="col-span-1">
-                  <label className="block text-[9px] uppercase font-bold text-slate-500 mb-1.5 tracking-wider">06. Prompt Mode</label>
+                  <label className="block text-[9px] uppercase font-bold text-slate-500 mb-1.5 tracking-wider">05. Prompt Mode</label>
                   <div className="grid grid-cols-1 gap-1">
                     {['General Image Prompt', 'Structured Prompt', 'Graphic Design', 'JSON'].map((mode) => (
                       <button
@@ -810,7 +796,7 @@ export default function App() {
         {/* Main Content Area */}
         <main className="flex-1 flex flex-col overflow-hidden bg-slate-900/20">
           {/* Grid Headers */}
-          <div className="grid grid-cols-[80px_1fr_1.3fr_1.3fr_1.3fr] bg-[#111827] border-b border-slate-800 text-[10px] font-bold uppercase tracking-[0.15em] text-slate-500 sticky top-0 z-20">
+          <div className="grid grid-cols-[100px_1fr_1.5fr_1.5fr] bg-[#111827] border-b border-slate-800 text-[10px] font-bold uppercase tracking-[0.15em] text-slate-500 sticky top-0 z-20">
             <div className="p-3 pl-8 flex items-center justify-center">ID</div>
             <div className="p-3 pl-6 border-l border-slate-800 flex items-center gap-2">
               <Type className="w-3 h-3 text-indigo-500" /> Script Segment
@@ -820,9 +806,6 @@ export default function App() {
             </div>
             <div className="p-3 pl-6 border-l border-slate-800 flex items-center gap-2">
               <MonitorPlay className="w-3 h-3 text-indigo-500" /> Video Motion Description
-            </div>
-            <div className="p-3 pl-6 border-l border-slate-800 flex items-center gap-2">
-              <Sparkles className="w-3 h-3 text-emerald-500" /> Director's Guidance
             </div>
           </div>
 
@@ -851,7 +834,7 @@ export default function App() {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: idx * 0.03 }}
-                    className={`grid grid-cols-[80px_1fr_1.3fr_1.3fr_1.3fr] group transition-all duration-200 border-b border-slate-800/30 ${
+                    className={`grid grid-cols-[100px_1fr_1.5fr_1.5fr] group transition-all duration-200 border-b border-slate-800/30 ${
                       idx % 2 === 0 ? 'bg-[#111827]' : 'bg-[#0F172A]'
                     } hover:bg-slate-800/50`}
                   >
@@ -893,7 +876,7 @@ export default function App() {
                       </div>
                     </div>
                     
-                    <div className="p-4 border-l border-slate-800/50 relative group/cell flex flex-col justify-center">
+                     <div className="p-4 border-l border-slate-800/50 relative group/cell flex flex-col justify-center">
                       <p className="text-[12px] text-indigo-300/80 leading-relaxed font-sans">{scene.videoPrompt}</p>
                       <button 
                         onClick={() => handleCopy(scene.videoPrompt)}
@@ -906,19 +889,6 @@ export default function App() {
                          <span className="text-[8px] text-slate-500 font-mono tracking-tighter">
                            {(idx * secondsPerScene).toFixed(1)}s - {((idx + 1) * secondsPerScene).toFixed(1)}s
                          </span>
-                      </div>
-                    </div>
-
-                    <div className="p-4 border-l border-slate-800/50 relative group/cell flex flex-col justify-center">
-                      <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-lg p-3 relative overflow-hidden group/guidance">
-                        <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500/30"></div>
-                        <p className="text-[11px] text-slate-400 leading-relaxed italic font-sans relative z-10">{scene.guidance || "No specific guidance for this sequence."}</p>
-                        <button 
-                          onClick={() => handleCopy(scene.guidance)}
-                          className="absolute top-1 right-1 p-1 bg-slate-900/80 border border-slate-700 rounded opacity-0 group-hover/guidance:opacity-100 transition-all hover:bg-emerald-600 hover:border-emerald-500 text-slate-400 hover:text-white shadow-sm scale-75"
-                        >
-                          <Copy className="w-3 h-3" />
-                        </button>
                       </div>
                     </div>
                   </motion.div>
